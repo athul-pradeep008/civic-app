@@ -1,0 +1,17 @@
+node_modules
+npm-debug.log
+.env
+.git
+.gitignore
+uploads
+tests
+artifacts
+.gemini
+README.md
+docs
+deployment_guide.md
+docker-compose.yml
+Dockerfile
+.dockerignore
+rapid-fix.ps1
+package-lock.json

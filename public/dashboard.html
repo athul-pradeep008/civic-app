@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Civic Issue Reporting System</title>
+    <link rel="stylesheet" href="/css/style.css">
+    <link rel="manifest" href="/manifest.json">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="msapplication-TileColor" content="#0066ff">
+    <meta name="msapplication-navbutton-color" content="#0066ff">
+    <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/1066/1066371.png">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+
+<body>
+    <nav class="navbar">
+        <div class="container">
+            <a href="/" class="navbar-brand">🏙️ CivicReport</a>
+            <ul class="navbar-menu" id="auth-links"></ul>
+        </div>
+    </nav>
+
+    <section class="dashboard-section">
+        <div class="container">
+            <h1 class="mb-3">My Dashboard</h1>
+
+            <!-- Stats -->
+            <div class="grid grid-4 mb-4">
+                <a href="/issues.html" class="card text-center no-underline hover-lift">
+                    <div class="stat-value text-primary-light" id="total-issues">0</div>
+                    <div class="stat-label">Total Reported</div>
+                </a>
+                <a href="/issues.html?status=reported" class="card text-center no-underline hover-lift">
+                    <div class="stat-value text-warning" id="pending-issues">0</div>
+                    <div class="stat-label">Pending</div>
+                </a>
+                <a href="/issues.html?status=resolved" class="card text-center no-underline hover-lift">
+                    <div class="stat-value text-success" id="resolved-issues">0</div>
+                    <div class="stat-label">Resolved</div>
+                </a>
+                <a href="/dashboard.html" class="card text-center no-underline hover-lift">
+                    <div class="stat-value text-accent" id="reputation">0</div>
+                    <div class="stat-label">Reputation</div>
+                </a>
+            </div>
+
+            <!-- Quick Actions -->
+            <div class="card mb-4">
+                <h3 class="mb-3">Quick Actions</h3>
+                <div class="flex gap-2">
+                    <a href="/report-issue.html" class="btn btn-primary">Report New Issue</a>
+                    <a href="/issues.html" class="btn btn-outline">Browse All Issues</a>
+                    <button class="btn btn-secondary" id="share-app-btn">🔗 Share App</button>
+                </div>
+            </div>
+
+            <!-- Analytics Section -->
+            <div class="grid grid-2 mb-4">
+                <div class="card">
+                    <h3 class="mb-3">Issues by Category</h3>
+                    <div class="chart-container">
+                        <canvas id="categoryChart"></canvas>
+                    </div>
+                </div>
+                <div class="card">
+                    <h3 class="mb-3">Resolution Status</h3>
+                    <div class="chart-container">
+                        <canvas id="statusChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <div id="my-issues-container"></div>
+            <div id="loading" class="text-center p-4 hidden">
+                <div class="spinner mx-auto"></div>
+            </div>
+        </div>
+        </div>
+    </section>
+
+
+    <script src="/js/share.js"></script>
+    <script src="/js/api.js"></script>
+    <script src="/js/auth.js"></script>
+    <script src="/js/validation.js"></script>
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="/js/dashboard.js"></script>
+</body>
+
+</html>

@@ -1,0 +1,21 @@
+{
+    "name": "Civic Issue Reporting System",
+    "short_name": "CivicReport",
+    "description": "Crowdsourced civic issue reporting system with enhanced verification and validation.",
+    "start_url": "/",
+    "display": "standalone",
+    "background_color": "#ffffff",
+    "theme_color": "#0066ff",
+    "icons": [
+        {
+            "src": "https://cdn-icons-png.flaticon.com/512/1066/1066371.png",
+            "sizes": "192x192",
+            "type": "image/png"
+        },
+        {
+            "src": "https://cdn-icons-png.flaticon.com/512/1066/1066371.png",
+            "sizes": "512x512",
+            "type": "image/png"
+        }
+    ]
+}

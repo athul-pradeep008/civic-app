@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Civic Issue Reporting System - Report & Track Community Issues</title>
+    <meta name="description"
+        content="Report and track civic issues in your community. Help make your city better with crowdsourced issue reporting.">
+    <link rel="stylesheet" href="/css/style.css">
+    <link rel="manifest" href="/manifest.json">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="msapplication-TileColor" content="#0066ff">
+    <meta name="msapplication-navbutton-color" content="#0066ff">
+    <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/1066/1066371.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+</head>
+
+<body>
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="container">
+            <a href="/" class="navbar-brand">🏙️ CivicReport</a>
+            <ul class="navbar-menu" id="auth-links">
+                <!-- Populated by auth.js -->
+            </ul>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section class="section-padding hero-section">
+        <div class="container">
+            <h1 class="slide-up hero-title">
+                Report Civic Issues.<br>Build Better Communities.
+            </h1>
+            <p class="slide-up hero-subtitle">
+                Empower your community by reporting potholes, broken streetlights, garbage dumps, and more.
+                Together, we can make our cities safer and cleaner.
+            </p>
+            <div class="flex flex-center gap-2 slide-up delay-200">
+                <a href="/report-issue.html" class="btn btn-primary btn-lg">Report an Issue</a>
+                <a href="/issues.html" class="btn btn-outline btn-lg">Browse Issues</a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Features Section -->
+    <section class="section-padding glass-section">
+        <div class="container">
+            <h2 class="text-center mb-4">Why Use CivicReport?</h2>
+            <div class="grid grid-3">
+                <div class="card text-center">
+                    <div class="feature-icon">📍</div>
+                    <h3>Location-Based</h3>
+                    <p>Report issues with precise GPS coordinates and interactive maps for accurate tracking.</p>
+                </div>
+                <div class="card text-center">
+                    <div class="feature-icon">✅</div>
+                    <h3>Verified Reports</h3>
+                    <p>Community voting and admin verification ensure only legitimate issues are tracked.</p>
+                </div>
+                <div class="card text-center">
+                    <div class="feature-icon">🔔</div>
+                    <h3>Real-Time Updates</h3>
+                    <p>Get notified when your reported issues are verified, in progress, or resolved.</p>
+                </div>
+                <div class="card text-center">
+                    <div class="feature-icon">🛡️</div>
+                    <h3>Spam Prevention</h3>
+                    <p>Advanced duplicate detection and rate limiting prevent spam and false reports.</p>
+                </div>
+                <div class="card text-center">
+                    <div class="feature-icon">👥</div>
+                    <h3>Community Driven</h3>
+                    <p>Upvote important issues to help prioritize what matters most to your community.</p>
+                </div>
+                <div class="card text-center">
+                    <div class="feature-icon">📊</div>
+                    <h3>Track Progress</h3>
+                    <p>Monitor issue status from reported to resolved with transparent tracking.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- How It Works -->
+    <section id="how-it-works" class="section-padding">
+        <div class="container text-center">
+            <h2 class="mb-4">How It Works</h2>
+            <div class="grid grid-3">
+                <div class="card">
+                    <div class="step-number bg-primary">1</div>
+                    <h4>Report the Issue</h4>
+                    <p>Take a photo, add location, and describe the civic issue you've encountered.</p>
+                </div>
+                <div class="card">
+                    <div class="step-number bg-accent">2</div>
+                    <h4>Community Verification</h4>
+                    <p>Other users can upvote to verify the issue, increasing its credibility and priority.</p>
+                </div>
+                <div class="card">
+                    <div class="step-number bg-success">3</div>
+                    <h4>Get It Resolved</h4>
+                    <p>Authorities review verified issues and work to resolve them. Track progress in real-time.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Reviews Section -->
+    <section id="reviews" class="section-padding glass-section">
+        <div class="container">
+            <h2 class="text-center mb-4">Community Feedback</h2>
+            <div class="grid grid-3">
+                <div class="card testimonial-card">
+                    <div class="quote-icon">“</div>
+                    <p class="testimonial-text">Reporting the pothole outside my house was so easy. It was fixed within
+                        a week!</p>
+                    <div class="testimonial-author">
+                        <strong>Sarah Johnson</strong>
+                        <span class="text-muted">Local Citizen</span>
+                    </div>
+                </div>
+                <div class="card testimonial-card">
+                    <div class="quote-icon">“</div>
+                    <p class="testimonial-text">This app has transformed how we communicate with our local authorities.
+                        Highly recommended.</p>
+                    <div class="testimonial-author">
+                        <strong>Mark Thompson</strong>
+                        <span class="text-muted">Community Leader</span>
+                    </div>
+                </div>
+                <div class="card testimonial-card">
+                    <div class="quote-icon">“</div>
+                    <p class="testimonial-text">The AI analysis feature saved me so much time while reporting multiple
+                        issues. Fantastic tool!</p>
+                    <div class="testimonial-author">
+                        <strong>Anita Desai</strong>
+                        <span class="text-muted">Civic Activist</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Stats Section -->
+    <section class="section-padding glass-section">
+        <div class="container">
+            <div class="grid grid-4">
+                <div class="text-center">
+                    <div class="stat-number text-primary-light">1,234</div>
+                    <div class="stat-label">Issues Reported</div>
+                </div>
+                <div class="text-center">
+                    <div class="stat-number text-accent">856</div>
+                    <div class="stat-label">Issues Resolved</div>
+                </div>
+                <div class="text-center">
+                    <div class="stat-number text-secondary">2,456</div>
+                    <div class="stat-label">Active Users</div>
+                </div>
+                <div class="text-center">
+                    <div class="stat-number text-warning">95%</div>
+                    <div class="stat-label">Satisfaction Rate</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Pricing Section -->
+    <section id="pricing" class="section-padding glass-section">
+        <div class="container">
+            <h2 class="text-center mb-4">Choose Your Plan</h2>
+            <div class="grid grid-3">
+                <!-- Citizen Plan -->
+                <div class="card pricing-card">
+                    <div class="pricing-header">
+                        <h3>Citizen</h3>
+                        <div class="price">Free</div>
+                        <p class="text-muted">For individual reporting</p>
+                    </div>
+                    <ul class="pricing-features">
+                        <li>✅ Unlimited issue reports</li>
+                        <li>✅ Real-time status tracking</li>
+                        <li>✅ AI-powered analysis</li>
+                        <li>✅ Community voting</li>
+                        <li>❌ Custom analytics</li>
+                    </ul>
+                    <a href="/login.html" class="btn btn-outline btn-block mt-2">Get Started</a>
+                </div>
+                <!-- Pro Plan -->
+                <div class="card pricing-card featured">
+                    <div class="pricing-header">
+                        <h3>Community Hero</h3>
+                        <div class="price">$9<span>/mo</span></div>
+                        <p class="text-muted">For community leaders</p>
+                    </div>
+                    <ul class="pricing-features">
+                        <li>✅ Everything in Citizen</li>
+                        <li>✅ Priority verification</li>
+                        <li>✅ Detailed area analytics</li>
+                        <li>✅ Ad-free experience</li>
+                        <li>✅ Support the platform</li>
+                    </ul>
+                    <a href="/login.html" class="btn btn-primary btn-block mt-2">Go Pro</a>
+                </div>
+                <!-- Agency Plan -->
+                <div class="card pricing-card">
+                    <div class="pricing-header">
+                        <h3>Municipality</h3>
+                        <div class="price">Custom</div>
+                        <p class="text-muted">For city officials</p>
+                    </div>
+                    <ul class="pricing-features">
+                        <li>✅ Admin dashboard access</li>
+                        <li>✅ Workforce management</li>
+                        <li>✅ API access</li>
+                        <li>✅ 24/7 Dedicated support</li>
+                        <li>✅ SLA guarantees</li>
+                    </ul>
+                    <a href="mailto:admin@civicreport.com" class="btn btn-outline btn-block mt-2">Contact Us</a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- CTA Section -->
+    <section class="section-padding text-center">
+        <div class="container">
+            <h2 class="cta-title">Ready to Make a Difference?</h2>
+            <p class="cta-text">
+                Join thousands of citizens working together to improve our communities.
+            </p>
+            <a href="/login.html" class="btn btn-primary btn-lg">Get Started Now</a>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container text-center">
+            <p class="text-muted">
+                &copy; 2024 CivicReport. Built with ❤️ for better communities.
+            </p>
+        </div>
+    </footer>
+
+    <script src="/js/share.js"></script>
+    <script src="/js/api.js"></script>
+    <script src="/js/auth.js"></script>
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/service-worker.js');
+            });
+        }
+    </script>
+    <script src="/js/ai-chat.js"></script>
+</body>
+
+</html>

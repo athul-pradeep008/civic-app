@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard - Civic Issue Reporting System</title>
+    <link rel="stylesheet" href="/css/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+</head>
+
+<body>
+    <nav class="navbar">
+        <div class="container">
+            <a href="/" class="navbar-brand">🏙️ CivicReport Admin</a>
+            <ul class="navbar-menu" id="auth-links"></ul>
+        </div>
+    </nav>
+
+    <section class="admin-section">
+        <div class="container">
+            <h1 class="mb-3">Admin Dashboard</h1>
+
+            <!-- Statistics -->
+            <div class="grid grid-4 mb-4">
+                <div class="card text-center">
+                    <div class="stat-value text-primary-light" id="total-issues">0
+                    </div>
+                    <div class="stat-label">Total Issues</div>
+                </div>
+                <div class="card text-center">
+                    <div class="stat-value text-warning" id="pending-issues">0</div>
+                    <div class="stat-label">Pending Review</div>
+                </div>
+                <div class="card text-center">
+                    <div class="stat-value text-success" id="resolved-issues">0
+                    </div>
+                    <div class="stat-label">Resolved</div>
+                </div>
+                <div class="card text-center">
+                    <div class="stat-value text-accent" id="total-users">0</div>
+                    <div class="stat-label">Total Users</div>
+                </div>
+            </div>
+
+            <!-- Recent Issues -->
+            <div class="card">
+                <h3 class="mb-3">Recent Issues</h3>
+                <div id="recent-issues"></div>
+                <div id="loading" class="text-center p-4">
+                    <div class="spinner mx-auto"></div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Status Update Modal -->
+    <div id="status-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Update Issue Status</h3>
+                <button class="modal-close" onclick="closeModal()">×</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label class="form-label" for="modal-status">Status</label>
+                    <select id="modal-status" class="form-control">
+                        <option value="reported">Reported</option>
+                        <option value="verified">Verified</option>
+                        <option value="in_progress">In Progress</option>
+                        <option value="resolved">Resolved</option>
+                        <option value="rejected">Rejected</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <div class="flex flex-between items-center mb-1">
+                        <label class="form-label mb-0" for="modal-notes">Admin Notes</label>
+                        <button class="btn btn-sm btn-accent" id="ai-suggest-btn" onclick="aiSuggestNotes()">✨ AI
+                            Suggest</button>
+                    </div>
+                    <textarea id="modal-notes" class="form-control" rows="4"
+                        placeholder="Enter resolution notes..."></textarea>
+                    <div id="ai-loading-modal" class="hidden mt-2">
+                        <div class="spinner spinner-xs inline-block mr-1"></div>
+                        <span class="text-sm">Consulting AI Assistant...</span>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-outline" onclick="closeModal()">Cancel</button>
+                <button class="btn btn-primary" onclick="saveStatus()">Update Status</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="/js/share.js"></script>
+    <script src="/js/api.js"></script>
+    <script src="/js/auth.js"></script>
+    <script src="/js/validation.js"></script>
+    <script src="/js/admin.js"></script>
+    <script>
+        // Check admin access
+        const user = API.getCurrentUser();
+        if (!user || user.role !== 'admin') {
+            Validation.showAlert('Admin access required', 'error');
+            setTimeout(() => window.location.href = '/', 2000);
+        }
+
+        let currentIssue = null;
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            await loadDashboard();
+        });
+
+        async function loadDashboard() {
+            try {
+                const stats = await AdminUtils.getStatistics();
+
+                document.getElementById('total-issues').textContent = stats.overview.totalIssues;
+                document.getElementById('pending-issues').textContent = stats.overview.reportedIssues + stats.overview.verifiedIssues;
+                document.getElementById('resolved-issues').textContent = stats.overview.resolvedIssues;
+                document.getElementById('total-users').textContent = stats.overview.totalUsers;
+
+                displayRecentIssues(stats.recentIssues);
+                document.getElementById('loading').classList.add('hidden');
+            } catch (error) {
+                document.getElementById('loading').classList.add('hidden');
+            }
+        }
+
+        function displayRecentIssues(issues) {
+            const container = document.getElementById('recent-issues');
+
+            container.innerHTML = `
+        <div class="overflow-x-auto">
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Title</th>
+                <th>Reporter</th>
+                <th>Category</th>
+                <th>Status</th>
+                <th class="text-center">Votes</th>
+                <th class="text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${issues.map(issue => `
+                <tr>
+                  <td data-label="Title">${issue.title}</td>
+                  <td data-label="Reporter">${issue.reporter.username}</td>
+                  <td data-label="Category"><span class="badge badge-secondary">${issue.category}</span></td>
+                  <td data-label="Status"><span class="badge status-${issue.status}">${issue.status.replace('_', ' ')}</span></td>
+                  <td data-label="Votes" class="text-center">👍 ${issue.upvotes} 👎 ${issue.downvotes}</td>
+                  <td data-label="Actions" class="text-right">
+                    <button class="btn btn-sm btn-primary" onclick='openStatusModal(${JSON.stringify(issue)})'>Update</button>
+                    <a href="/issue-detail.html?id=${issue._id}" class="btn btn-sm btn-outline">View</a>
+                  </td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+      `;
+        }
+
+        function openStatusModal(issue) {
+            currentIssue = issue;
+            document.getElementById('modal-status').value = issue.status;
+            document.getElementById('modal-notes').value = issue.adminNotes || '';
+            document.getElementById('status-modal').classList.add('active');
+        }
+
+        async function aiSuggestNotes() {
+            if (!currentIssue) return;
+
+            const loader = document.getElementById('ai-loading-modal');
+            const notesArea = document.getElementById('modal-notes');
+            const btn = document.getElementById('ai-suggest-btn');
+
+            try {
+                loader.classList.remove('hidden');
+                btn.disabled = true;
+
+                const result = await AdminUtils.getResolutionDraft(
+                    currentIssue.title,
+                    currentIssue.category,
+                    currentIssue.description
+                );
+
+                loader.classList.add('hidden');
+                btn.disabled = false;
+
+                if (result) {
+                    const text = `ACTION: ${result.suggested_action}\nESTIMATE: ${result.estimated_days} days\n\nDRAFT RESPONSE:\n${result.response_draft}`;
+                    notesArea.value = text;
+                    Validation.showAlert('AI Suggestion applied!', 'success');
+                }
+            } catch (error) {
+                loader.classList.add('hidden');
+                btn.disabled = false;
+                Validation.showAlert('AI consultation failed', 'error');
+            }
+        }
+
+        function closeModal() {
+            document.getElementById('status-modal').classList.remove('active');
+            currentIssue = null;
+        }
+
+        async function saveStatus() {
+            const status = document.getElementById('modal-status').value;
+            const notes = document.getElementById('modal-notes').value;
+
+            try {
+                await AdminUtils.updateIssueStatus(currentIssue._id, status, notes);
+                closeModal();
+                await loadDashboard();
+            } catch (error) {
+                console.error('Update error:', error);
+            }
+        }
+    </script>
+</body>
+
+</html>

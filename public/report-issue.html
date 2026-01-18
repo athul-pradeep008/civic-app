@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Report Issue - Civic Issue Reporting System</title>
+    <link rel="stylesheet" href="/css/style.css">
+    <link rel="manifest" href="/manifest.json">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="msapplication-TileColor" content="#0066ff">
+    <meta name="msapplication-navbutton-color" content="#0066ff">
+    <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/1066/1066371.png">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+</head>
+
+<body>
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="container">
+            <a href="/" class="navbar-brand">🏙️ CivicReport</a>
+            <ul class="navbar-menu" id="auth-links"></ul>
+        </div>
+    </nav>
+
+    <!-- Report Issue Section -->
+    <section class="issues-section">
+        <div class="container">
+            <div class="report-container">
+                <h1 class="mb-3">Report a Civic Issue</h1>
+                <p class="text-secondary mb-lg">
+                    Help improve your community by reporting issues. Provide as much detail as possible for faster
+                    resolution.
+                </p>
+
+                <div id="duplicate-warning" class="alert alert-warning hidden">
+                    <strong>⚠️ Similar issues found nearby!</strong>
+                    <div id="duplicate-list" class="mt-2"></div>
+                </div>
+
+                <form id="report-form" class="card">
+                    <!-- Title -->
+                    <div class="form-group">
+                        <label class="form-label" for="title">Issue Title *</label>
+                        <input type="text" id="title" class="form-control" placeholder="Brief description of the issue"
+                            required maxlength="100">
+                        <div class="form-help">Maximum 100 characters</div>
+                    </div>
+
+                    <!-- Category -->
+                    <div class="form-group">
+                        <label class="form-label" for="category">Category *</label>
+                        <select id="category" class="form-control" required>
+                            <option value="">Select a category</option>
+                            <option value="pothole">Pothole</option>
+                            <option value="streetlight">Broken Streetlight</option>
+                            <option value="garbage">Garbage Dump</option>
+                            <option value="drainage">Drainage Problem</option>
+                            <option value="water_supply">Water Supply Issue</option>
+                            <option value="road_damage">Road Damage</option>
+                            <option value="traffic_signal">Traffic Signal Issue</option>
+                            <option value="park_maintenance">Park Maintenance</option>
+                            <option value="graffiti">Graffiti/Vandalism</option>
+                            <option value="other">Other</option>
+                        </select>
+                    </div>
+
+                    <!-- Description -->
+                    <div class="form-group">
+                        <div class="flex items-center gap-2 mb-1">
+                            <label class="form-label mb-0" for="description">Description *</label>
+                            <button type="button" id="voice-btn" class="btn btn-sm btn-outline-secondary">
+                                🎤 Speak
+                            </button>
+                        </div>
+                        <textarea id="description" class="form-control" rows="4"
+                            placeholder="Provide detailed information about the issue..." required
+                            maxlength="1000"></textarea>
+                        <div class="form-help">Maximum 1000 characters</div>
+                    </div>
+
+                    <!-- Priority -->
+                    <div class="form-group">
+                        <label class="form-label" for="priority">Priority</label>
+                        <select id="priority" class="form-control">
+                            <option value="low">Low</option>
+                            <option value="medium" selected>Medium</option>
+                            <option value="high">High</option>
+                            <option value="critical">Critical</option>
+                        </select>
+                    </div>
+
+                    <!-- Location -->
+                    <div class="form-group">
+                        <label class="form-label">Location *</label>
+                        <div class="flex gap-2 mb-2">
+                            <button type="button" id="use-current-location" class="btn btn-secondary">
+                                📍 Use Current Location
+                            </button>
+                            <input type="text" id="search-address" class="form-control"
+                                placeholder="Or search for an address...">
+                            <button type="button" id="search-btn" class="btn btn-outline">Search</button>
+                        </div>
+                        <div id="map"></div>
+                        <input type="hidden" id="latitude" required>
+                        <input type="hidden" id="longitude" required>
+                    </div>
+
+                    <!-- Address -->
+                    <div class="form-group">
+                        <label class="form-label" for="address">Address *</label>
+                        <input type="text" id="address" class="form-control" placeholder="Full address" required>
+                    </div>
+
+                    <!-- Images -->
+                    <div class="form-group">
+                        <label class="form-label" for="images">Upload Images</label>
+                        <div class="flex gap-2 mb-2">
+                            <input type="file" id="images" class="form-control file-upload-wrapper" accept="image/*"
+                                multiple>
+                            <button type="button" id="analyze-btn" class="btn btn-secondary btn-ai-analyze">
+                                ✨ Analyze with AI
+                            </button>
+                        </div>
+                        <div class="form-help">You can upload up to 5 images (JPEG, PNG, WebP). Max 5MB per image.</div>
+                        <div id="image-preview-container" class="image-preview-container"></div>
+                        <div id="ai-loading" class="ai-loading-container hidden">
+                            <div class="spinner spinner-sm mx-auto"></div>
+                            <span class="text-sm">Analyzing image...</span>
+                        </div>
+                    </div>
+
+                    <!-- Submit Button -->
+                    <div class="flex gap-2">
+                        <button type="submit" class="btn btn-primary btn-lg">Submit Report</button>
+                        <a href="/dashboard.html" class="btn btn-outline btn-lg">Cancel</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </section>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="/js/share.js"></script>
+    <script src="/js/api.js"></script>
+    <script src="/js/auth.js"></script>
+    <script src="/js/validation.js"></script>
+    <script src="/js/map.js"></script>
+    <script>
+        // Require authentication
+        if (!API.getAuthToken()) {
+            window.location.href = '/login.html';
+        }
+
+        let selectedFiles = [];
+
+        // Initialize map
+        document.addEventListener('DOMContentLoaded', () => {
+            MapUtils.initMap('map', [20.5937, 78.9629], 5);
+
+            // Enable map click
+            MapUtils.onMapClick((latlng) => {
+                console.log('Location selected:', latlng);
+            });
+        });
+
+        // Use current location
+        document.getElementById('use-current-location').addEventListener('click', async () => {
+            try {
+                Validation.showLoading();
+                const location = await MapUtils.getCurrentLocation();
+                await MapUtils.setMapLocation(location.latitude, location.longitude);
+                Validation.hideLoading();
+                Validation.showAlert('Location set successfully', 'success');
+            } catch (error) {
+                Validation.hideLoading();
+                Validation.showAlert('Could not get your location. Please select manually on the map.', 'error');
+            }
+        });
+
+        // Search address
+        document.getElementById('search-btn').addEventListener('click', async () => {
+            const address = document.getElementById('search-address').value;
+            if (!address) return;
+
+            try {
+                Validation.showLoading();
+                const result = await MapUtils.searchLocation(address);
+                Validation.hideLoading();
+
+                if (result) {
+                    Validation.showAlert('Location found', 'success');
+                } else {
+                    Validation.showAlert('Location not found. Try a different search.', 'warning');
+                }
+            } catch (error) {
+                Validation.hideLoading();
+                Validation.showAlert('Search failed', 'error');
+            }
+        });
+
+        // Handle image selection
+        document.getElementById('images').addEventListener('change', (e) => {
+            const files = Array.from(e.target.files);
+
+            if (files.length + selectedFiles.length > 5) {
+                Validation.showAlert('Maximum 5 images allowed', 'warning');
+                return;
+            }
+
+            selectedFiles = [...selectedFiles, ...files].slice(0, 5);
+            displayImagePreviews();
+        });
+
+        function displayImagePreviews() {
+            const container = document.getElementById('image-preview-container');
+            container.innerHTML = '';
+
+            selectedFiles.forEach((file, index) => {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const preview = document.createElement('div');
+                    preview.className = 'image-preview';
+                    preview.innerHTML = `
+            <img src="${e.target.result}" alt="Preview">
+            <button type="button" class="image-preview-remove" onclick="removeImage(${index})">×</button>
+          `;
+                    container.appendChild(preview);
+                };
+                reader.readAsDataURL(file);
+            });
+        }
+
+        window.removeImage = (index) => {
+            selectedFiles.splice(index, 1);
+            displayImagePreviews();
+        };
+
+        // Voice Recognition Logic
+        const voiceBtn = document.getElementById('voice-btn');
+        const descInput = document.getElementById('description');
+
+        if ('webkitSpeechRecognition' in window) {
+            const recognition = new webkitSpeechRecognition();
+            recognition.continuous = false;
+            recognition.lang = 'en-US';
+
+            voiceBtn.addEventListener('click', () => {
+                if (voiceBtn.classList.contains('recording')) {
+                    recognition.stop();
+                } else {
+                    recognition.start();
+                    voiceBtn.textContent = '🛑 Listening...';
+                    voiceBtn.classList.add('recording');
+                    voiceBtn.classList.add('btn-danger');
+                    voiceBtn.classList.remove('btn-outline-secondary');
+                }
+            });
+
+            recognition.onresult = (event) => {
+                const transcript = event.results[0][0].transcript;
+                descInput.value += (descInput.value ? ' ' : '') + transcript;
+            };
+
+            recognition.onend = () => {
+                voiceBtn.textContent = '🎤 Speak';
+                voiceBtn.classList.remove('recording');
+                voiceBtn.classList.remove('btn-danger');
+                voiceBtn.classList.add('btn-outline-secondary');
+            };
+
+            recognition.onerror = (event) => {
+                console.error("Speech verification error", event.error);
+                voiceBtn.textContent = '🎤 Retry';
+                voiceBtn.classList.remove('recording');
+            };
+        } else {
+            voiceBtn.style.display = 'none'; // Hide if not supported
+        }
+
+        // AI Image Analysis
+        document.getElementById('analyze-btn').addEventListener('click', async () => {
+            if (selectedFiles.length === 0) {
+                Validation.showAlert('Please upload an image first', 'warning');
+                return;
+            }
+
+            const file = selectedFiles[0];
+            const formData = new FormData();
+            formData.append('image', file);
+
+            const loading = document.getElementById('ai-loading');
+            loading.classList.remove('hidden');
+
+            try {
+                const res = await fetch(`${API_BASE_URL}/ai/analyze-image`, {
+                    method: 'POST',
+                    body: formData
+                });
+                const response = await res.json();
+
+                loading.classList.add('hidden');
+
+                if (response.success) {
+                    const data = response.data;
+
+                    // 1. Auto-fill Category
+                    if (data.category && data.category !== 'other') {
+                        document.getElementById('category').value = data.category;
+                    }
+
+                    // 2. Auto-fill Priority (New Feature)
+                    if (data.priority) {
+                        const priorityEl = document.getElementById('priority');
+                        priorityEl.value = data.priority;
+                        // Visual cue for high priority
+                        if (data.priority === 'high' || data.priority === 'critical') {
+                            priorityEl.classList.add('border-danger');
+                            setTimeout(() => priorityEl.classList.remove('border-danger'), 3000);
+                        }
+                    }
+
+                    // 3. Smart Description Fill
+                    if (data.description) {
+                        const descEl = document.getElementById('description');
+                        const prefix = `[AI Smart-Fill]: `;
+                        descEl.value = prefix + data.description;
+                    }
+
+                    // 4. Smart Title generation
+                    const titleInput = document.getElementById('title');
+                    if (!titleInput.value && data.category) {
+                        const catOption = document.querySelector(`#category option[value="${data.category}"]`);
+                        const catName = catOption ? catOption.text : 'Issue';
+                        titleInput.value = `${catName} near my location`;
+                    }
+
+                    Validation.showAlert('AI Smart-Fill complete!', 'success');
+                } else {
+                    Validation.showAlert('Could not analyze image.', 'error');
+                }
+            } catch (error) {
+                loading.classList.add('hidden');
+                Validation.showAlert('AI Analysis failed.', 'error');
+            }
+        });
+
+
+        // Form submission
+        document.getElementById('report-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const latitude = document.getElementById('latitude').value;
+            const longitude = document.getElementById('longitude').value;
+
+            if (!latitude || !longitude) {
+                Validation.showAlert('Please select a location on the map', 'error');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('title', document.getElementById('title').value);
+            formData.append('category', document.getElementById('category').value);
+            formData.append('description', document.getElementById('description').value);
+            formData.append('priority', document.getElementById('priority').value);
+            formData.append('address', document.getElementById('address').value);
+
+            // Add location as JSON
+            formData.append('location', JSON.stringify({
+                type: 'Point',
+                coordinates: [parseFloat(longitude), parseFloat(latitude)]
+            }));
+
+            // Add images
+            selectedFiles.forEach(file => {
+                formData.append('images', file);
+            });
+
+            try {
+                Validation.showLoading();
+                const result = await API.issues.create(formData);
+                Validation.hideLoading();
+
+                if (result.duplicateWarning) {
+                    const warning = document.getElementById('duplicate-warning');
+                    const list = document.getElementById('duplicate-list');
+
+                    list.innerHTML = result.duplicateIssues.map(issue => `
+            <div class="mt-2">
+              <a href="/issue-detail.html?id=${issue._id}" class="text-warning">
+                ${issue.title} - ${issue.status}
+              </a>
+            </div>
+          `).join('');
+
+                    warning.classList.remove('hidden');
+                }
+
+                Validation.showAlert('Issue reported successfully!', 'success');
+                setTimeout(() => {
+                    window.location.href = `/issue-detail.html?id=${result.data._id}`;
+                }, 1500);
+            } catch (error) {
+                Validation.hideLoading();
+                Validation.showAlert(error.message || 'Failed to report issue', 'error');
+            }
+        });
+    </script>
+</body>
+
+</html>

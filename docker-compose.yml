@@ -1,0 +1,37 @@
+version: '3.8'
+
+services:
+  mongodb:
+    image: mongo:latest
+    container_name: civicreport-db
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+    networks:
+      - civicreport-network
+
+  app:
+    build: .
+    container_name: civicreport-app
+    ports:
+      - "5002:5002"
+    volumes:
+      - ./uploads:/app/uploads
+    environment:
+      - NODE_ENV=production
+      - PORT=5002
+      - MONGODB_URI=mongodb://mongodb:27017/civic-issues
+      - JWT_SECRET=your_docker_jwt_secret
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+    depends_on:
+      - mongodb
+    networks:
+      - civicreport-network
+
+networks:
+  civicreport-network:
+    driver: bridge
+
+volumes:
+  mongodb_data:

@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Issue Details - Civic Issue Reporting System</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+</head>
+
+<body>
+  <nav class="navbar">
+    <div class="container">
+      <a href="/" class="navbar-brand">🏙️ CivicReport</a>
+      <ul class="navbar-menu" id="auth-links"></ul>
+    </div>
+  </nav>
+
+  <section class="issue-detail-section">
+    <div class="container">
+      <a href="/issues.html" class="btn btn-outline mb-3">← Back to Issues</a>
+
+      <div id="issue-detail"></div>
+      <div id="loading" class="text-center p-4">
+        <div class="spinner mx-auto"></div>
+      </div>
+    </div>
+  </section>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="/js/share.js"></script>
+  <script src="/js/api.js"></script>
+  <script src="/js/auth.js"></script>
+  <script src="/js/validation.js"></script>
+  <script src="/js/map.js"></script>
+  <script src="/js/issues.js"></script>
+  <script>
+    const urlParams = new URLSearchParams(window.location.search);
+    const issueId = urlParams.get('id');
+
+    if (!issueId) {
+      window.location.href = '/issues.html';
+    }
+
+    let currentIssue = null;
+    let userVote = null;
+
+    document.addEventListener('DOMContentLoaded', async () => {
+      await loadIssueDetail();
+    });
+
+    async function loadIssueDetail() {
+      try {
+        const result = await API.issues.getById(issueId);
+        currentIssue = result.data;
+
+        if (API.getAuthToken()) {
+          userVote = await IssueUtils.getUserVote(issueId);
+        }
+
+        displayIssue(currentIssue);
+        document.getElementById('loading').classList.add('hidden');
+      } catch (error) {
+        document.getElementById('loading').classList.add('hidden');
+        Validation.showAlert('Failed to load issue details', 'error');
+      }
+    }
+
+    function displayIssue(issue) {
+      const container = document.getElementById('issue-detail');
+      const [lng, lat] = issue.location.coordinates;
+
+      container.innerHTML = `
+        <div class="card">
+          <div class="card-header">
+            <div class="flex flex-between items-start mobile-column gap-2">
+              <div>
+                <h1 class="issue-title">${IssueUtils.getCategoryIcon(issue.category)} ${issue.title}</h1>
+                <div class="flex gap-2 flex-wrap">
+                  <span class="badge status-${issue.status}">${issue.status.replace('_', ' ')}</span>
+                  <span class="badge badge-secondary">${issue.category}</span>
+                  <span class="badge badge-info">${issue.priority}</span>
+                  ${issue.isVerified ? '<span class="badge badge-success">✓ Verified</span>' : ''}
+                </div>
+              </div>
+              <div class="vote-container">
+                <button class="vote-btn ${userVote?.voteType === 'upvote' ? 'active' : ''}" onclick="handleVote('upvote')">
+                  👍 <span class="vote-count">${issue.upvotes}</span>
+                </button>
+                <button class="vote-btn ${userVote?.voteType === 'downvote' ? 'active' : ''}" onclick="handleVote('downvote')">
+                  👎 <span class="vote-count">${issue.downvotes}</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div class="card-body">
+            <h3>Description</h3>
+            <p>${issue.description}</p>
+
+            ${issue.images && issue.images.length > 0 ? `
+              <h3>Images</h3>
+              <div class="image-preview-container">
+                ${issue.images.map(img => `
+                  <div class="image-preview image-preview-item">
+                    <img src="/${img.path}" alt="Issue image" onclick="window.open('/${img.path}', '_blank')">
+                  </div>
+                `).join('')}
+              </div>
+            ` : ''}
+
+            <h3>Location</h3>
+            <p>📍 ${issue.address}</p>
+            <div id="issue-map" class="issue-map-container"></div>
+
+            <h3>Details</h3>
+            <div class="grid grid-2">
+              <div>
+                <strong>Reported by:</strong> ${issue.reporter.username}<br>
+                <strong>Reported on:</strong> ${IssueUtils.formatDate(issue.createdAt)}<br>
+                <strong>Verification Score:</strong> ${issue.verificationScore}
+              </div>
+              <div>
+                ${issue.verifiedAt ? `<strong>Verified on:</strong> ${IssueUtils.formatDate(issue.verifiedAt)}<br>` : ''}
+                ${issue.resolvedAt ? `<strong>Resolved on:</strong> ${IssueUtils.formatDate(issue.resolvedAt)}<br>` : ''}
+                ${issue.adminNotes ? `<strong>Admin Notes:</strong> ${issue.adminNotes}` : ''}
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+
+      // Initialize map
+      setTimeout(() => {
+        const map = MapUtils.initMap('issue-map', [lat, lng], 15);
+        MapUtils.addMarker(lat, lng, { popup: issue.title });
+      }, 100);
+    }
+
+    async function handleVote(voteType) {
+      try {
+        const result = await IssueUtils.voteOnIssue(issueId, voteType, (data) => {
+          currentIssue.upvotes = data.upvotes;
+          currentIssue.downvotes = data.downvotes;
+          currentIssue.verificationScore = data.verificationScore;
+          currentIssue.isVerified = data.isVerified;
+        });
+
+        // Reload to update vote buttons
+        await loadIssueDetail();
+      } catch (error) {
+        console.error('Vote error:', error);
+      }
+    }
+  </script>
+</body>
+
+</html>

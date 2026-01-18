@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Browse Issues - Civic Issue Reporting System</title>
+    <link rel="stylesheet" href="/css/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+</head>
+
+<body>
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="container">
+            <a href="/" class="navbar-brand">🏙️ CivicReport</a>
+            <ul class="navbar-menu" id="auth-links"></ul>
+        </div>
+    </nav>
+
+    <!-- Issues Section -->
+    <section class="issues-section">
+        <div class="container">
+            <div class="flex flex-between mb-3 items-center">
+                <h1>Civic Issues</h1>
+                <a href="/report-issue.html" class="btn btn-primary">Report New Issue</a>
+            </div>
+
+            <!-- Filters -->
+            <div class="card mb-3">
+                <div class="grid grid-4">
+                    <div class="form-group m-0">
+                        <label class="form-label" for="filter-category">Category</label>
+                        <select id="filter-category" class="form-control">
+                            <option value="">All Categories</option>
+                            <option value="pothole">Pothole</option>
+                            <option value="streetlight">Streetlight</option>
+                            <option value="garbage">Garbage</option>
+                            <option value="drainage">Drainage</option>
+                            <option value="water_supply">Water Supply</option>
+                            <option value="road_damage">Road Damage</option>
+                            <option value="traffic_signal">Traffic Signal</option>
+                            <option value="park_maintenance">Park Maintenance</option>
+                            <option value="graffiti">Graffiti</option>
+                            <option value="other">Other</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group m-0">
+                        <label class="form-label" for="filter-status">Status</label>
+                        <select id="filter-status" class="form-control">
+                            <option value="">All Status</option>
+                            <option value="reported">Reported</option>
+                            <option value="verified">Verified</option>
+                            <option value="in_progress">In Progress</option>
+                            <option value="resolved">Resolved</option>
+                            <option value="rejected">Rejected</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group m-0">
+                        <label class="form-label" for="filter-priority">Priority</label>
+                        <select id="filter-priority" class="form-control">
+                            <option value="">All Priorities</option>
+                            <option value="low">Low</option>
+                            <option value="medium">Medium</option>
+                            <option value="high">High</option>
+                            <option value="critical">Critical</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group m-0">
+                        <label class="form-label" for="search">Search</label>
+                        <input type="text" id="search" class="form-control" placeholder="Search issues...">
+                    </div>
+                </div>
+            </div>
+
+            <!-- View Toggle -->
+            <div class="flex gap-2 mb-3">
+                <button id="view-map-btn" class="btn btn-outline">🗺️ Map View</button>
+                <button id="view-list-btn" class="btn btn-primary">📋 List View</button>
+            </div>
+
+            <!-- Map View -->
+            <div id="map-view" class="hidden mb-3">
+                <div id="map" class="h-500"></div>
+            </div>
+
+            <!-- List View -->
+            <div id="list-view">
+                <div id="issues-container" class="grid grid-2"></div>
+                <div id="loading" class="text-center p-4 hidden">
+                    <div class="spinner mx-auto"></div>
+                </div>
+                <div id="no-issues" class="text-center p-4 hidden">
+                    <p class="text-muted">No issues found</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="/js/share.js"></script>
+    <script src="/js/api.js"></script>
+    <script src="/js/auth.js"></script>
+    <script src="/js/validation.js"></script>
+    <script src="/js/map.js"></script>
+    <script>
+        let currentView = 'list';
+        let allIssues = [];
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            loadIssues();
+            setupFilters();
+            setupViewToggle();
+        });
+
+        async function loadIssues() {
+            try {
+                document.getElementById('loading').classList.remove('hidden');
+
+                const filters = {
+                    category: document.getElementById('filter-category').value,
+                    status: document.getElementById('filter-status').value,
+                    priority: document.getElementById('filter-priority').value,
+                    search: document.getElementById('search').value,
+                };
+
+                const result = await API.issues.getAll(filters);
+                allIssues = result.data;
+
+                displayIssues(allIssues);
+                document.getElementById('loading').classList.add('hidden');
+            } catch (error) {
+                document.getElementById('loading').classList.add('hidden');
+                Validation.showAlert('Failed to load issues', 'error');
+            }
+        }
+
+        function displayIssues(issues) {
+            const container = document.getElementById('issues-container');
+            const noIssues = document.getElementById('no-issues');
+
+            if (issues.length === 0) {
+                container.innerHTML = '';
+                noIssues.classList.remove('hidden');
+                return;
+            }
+
+            noIssues.classList.add('hidden');
+
+            container.innerHTML = issues.map(issue => `
+        <div class="card">
+          <div class="card-header">
+            <div class="flex flex-between items-start">
+              <h3 class="card-title m-0">${issue.title}</h3>
+              <span class="badge status-${issue.status}">${issue.status.replace('_', ' ')}</span>
+            </div>
+          </div>
+          <div class="card-body">
+            <p class="text-secondary mb-2">
+              ${issue.description.substring(0, 150)}${issue.description.length > 150 ? '...' : ''}
+            </p>
+            <div class="flex gap-2 flex-wrap">
+              <span class="badge badge-secondary">${issue.category}</span>
+              <span class="badge badge-info">${issue.priority}</span>
+            </div>
+            <p class="text-muted text-sm mt-2 mb-0">
+              📍 ${issue.address.substring(0, 60)}...
+            </p>
+          </div>
+          <div class="card-footer">
+            <div class="flex gap-2 items-center">
+              <span class="text-secondary text-sm">
+                👍 ${issue.upvotes} 👎 ${issue.downvotes}
+              </span>
+              <span class="text-muted text-sm">
+                Score: ${issue.verificationScore}
+              </span>
+            </div>
+            <a href="/issue-detail.html?id=${issue._id}" class="btn btn-sm btn-primary">View Details</a>
+          </div>
+        </div>
+      `).join('');
+
+            // Update map if in map view
+            if (currentView === 'map') {
+                MapUtils.addIssueMarkers(issues);
+            }
+        }
+
+        function setupFilters() {
+            const filters = ['filter-category', 'filter-status', 'filter-priority', 'search'];
+
+            filters.forEach(filterId => {
+                const element = document.getElementById(filterId);
+                element.addEventListener('change', loadIssues);
+                if (filterId === 'search') {
+                    element.addEventListener('input', debounce(loadIssues, 500));
+                }
+            });
+        }
+
+        function setupViewToggle() {
+            const mapBtn = document.getElementById('view-map-btn');
+            const listBtn = document.getElementById('view-list-btn');
+            const mapView = document.getElementById('map-view');
+            const listView = document.getElementById('list-view');
+
+            mapBtn.addEventListener('click', () => {
+                currentView = 'map';
+                mapView.classList.remove('hidden');
+                listView.classList.add('hidden');
+                mapBtn.classList.remove('btn-outline');
+                mapBtn.classList.add('btn-primary');
+                listBtn.classList.remove('btn-primary');
+                listBtn.classList.add('btn-outline');
+
+                // Initialize map if not already done
+                if (!MapUtils.getMap()) {
+                    MapUtils.initMap('map', [20.5937, 78.9629], 5);
+                }
+                MapUtils.addIssueMarkers(allIssues);
+            });
+
+            listBtn.addEventListener('click', () => {
+                currentView = 'list';
+                mapView.classList.add('hidden');
+                listView.classList.remove('hidden');
+                listBtn.classList.remove('btn-outline');
+                listBtn.classList.add('btn-primary');
+                mapBtn.classList.remove('btn-primary');
+                mapBtn.classList.add('btn-outline');
+            });
+        }
+
+        function debounce(func, wait) {
+            let timeout;
+            return function executedFunction(...args) {
+                const later = () => {
+                    clearTimeout(timeout);
+                    func(...args);
+                };
+                clearTimeout(timeout);
+                timeout = setTimeout(later, wait);
+            };
+        }
+    </script>
+</body>
+
+</html>

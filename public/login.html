@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Civic Issue Reporting System</title>
+    <link rel="stylesheet" href="/css/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+</head>
+
+<body>
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="container">
+            <a href="/" class="navbar-brand">🏙️ CivicReport</a>
+            <ul class="navbar-menu" id="auth-links">
+                <li><a href="/">Home</a></li>
+                <li><a href="/issues.html">Browse Issues</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <!-- Login/Register Section -->
+    <section class="auth-section">
+        <div class="container">
+            <div class="auth-container">
+                <div class="card">
+                    <div class="text-center mb-4">
+                        <h2 id="form-title">Welcome Back</h2>
+                        <p class="text-secondary">Sign in to report and track civic issues</p>
+                    </div>
+
+                    <!-- Auth Method Tabs -->
+                    <div class="flex flex-center gap-2 mb-4 auth-tabs" id="auth-tabs">
+                        <button class="btn btn-sm btn-primary" id="tab-password"
+                            onclick="switchTab('password')">Password</button>
+                        <button class="btn btn-sm btn-outline" id="tab-otp" onclick="switchTab('otp')">OTP /
+                            Phone</button>
+                    </div>
+
+                    <!-- Google Sign-In -->
+                    <div class="mb-4 text-center">
+                        <div id="g_id_onload" data-client_id="YOUR_GOOGLE_CLIENT_ID_HERE"
+                            data-callback="handleCredentialResponse" data-auto_select="false">
+                        </div>
+                        <div class="g_id_signin" data-type="standard" data-width="300"></div>
+
+                        <!-- SIMULATION BUTTON (Shows if no Client ID is set) -->
+                        <div id="google-demo-fallback" class="hidden mt-2">
+                            <button type="button" onclick="simulateGoogleLogin()"
+                                class="btn w-full flex flex-center gap-2 btn-google-sim">
+                                <img src="https://cdn-icons-png.flaticon.com/512/2991/2991148.png" width="20" alt="G">
+                                Sign in with Google (Demo)
+                            </button>
+                            <p class="text-xs text-warning mt-1">⚠️ Simulation Mode (No Client ID)</p>
+                        </div>
+
+                        <p class="text-xs text-muted mt-2">Sign in with Google or use options below</p>
+                    </div>
+
+                    <!-- LOGIN: Password Mode -->
+                    <form id="login-form">
+                        <div class="form-group">
+                            <label class="form-label" for="login-email">Email</label>
+                            <input type="email" id="login-email" class="form-control" placeholder="your@email.com">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="login-password">Password</label>
+                            <input type="password" id="login-password" class="form-control" placeholder="••••••••">
+                        </div>
+                        <button type="submit" class="btn btn-primary w-full">Sign In</button>
+                    </form>
+
+                    <!-- LOGIN: OTP Mode -->
+                    <form id="otp-form" class="hidden">
+                        <div class="flex gap-2 mb-3">
+                            <label class="flex-1 text-center p-2 border rounded cursor-pointer bg-secondary"
+                                id="radio-email-label">
+                                <input type="radio" name="otp-method" value="email" checked
+                                    onchange="toggleOtpMethod()"> Email
+                            </label>
+                            <label class="flex-1 text-center p-2 border rounded cursor-pointer" id="radio-phone-label">
+                                <input type="radio" name="otp-method" value="phone" onchange="toggleOtpMethod()"> Phone
+                            </label>
+                        </div>
+
+                        <div class="form-group" id="group-otp-email">
+                            <label class="form-label">Email Address</label>
+                            <input type="email" id="otp-email-input" class="form-control"
+                                placeholder="name@example.com">
+                        </div>
+
+                        <div class="form-group hidden" id="group-otp-phone">
+                            <label class="form-label">Phone Number</label>
+                            <input type="tel" id="otp-phone-input" class="form-control" placeholder="+1234567890">
+                        </div>
+
+                        <div class="form-group hidden" id="group-otp-code">
+                            <label class="form-label">Enter Verification Code</label>
+                            <input type="text" id="otp-code-input" class="form-control" placeholder="123456"
+                                maxlength="6">
+                        </div>
+
+                        <button type="button" id="btn-send-otp" class="btn btn-primary w-full"
+                            onclick="sendAuthOtp()">Send Code</button>
+                        <button type="button" id="btn-verify-otp" class="btn btn-success w-full hidden"
+                            onclick="verifyAuthOtp()">Verify & Login</button>
+                    </form>
+
+                    <!-- Register Form (Hidden by default) -->
+                    <form id="register-form" class="hidden">
+                        <div class="form-group">
+                            <label class="form-label" for="register-username">Username</label>
+                            <input type="text" id="register-username" class="form-control" placeholder="johndoe">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="register-email">Email</label>
+                            <input type="email" id="register-email" class="form-control" placeholder="your@email.com">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="register-password">Password</label>
+                            <input type="password" id="register-password" class="form-control" placeholder="••••••••">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="register-confirm-password">Confirm Password</label>
+                            <input type="password" id="register-confirm-password" class="form-control"
+                                placeholder="••••••••">
+                        </div>
+                        <button type="submit" class="btn btn-primary w-full">Create Account</button>
+                    </form>
+
+                    <!-- Toggle Link -->
+                    <div class="text-center mt-3">
+                        <p class="text-secondary">
+                            <span id="toggle-text">Don't have an account?</span>
+                            <a href="#" id="toggle-form" class="toggle-link">Sign Up</a>
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <script src="/js/share.js"></script>
+    <script src="/js/api.js"></script>
+    <script src="/js/auth.js"></script>
+    <script src="/js/validation.js"></script>
+    <script src="/js/auth-ui.js"></script>
+</body>
+</body>
+
+</html>
