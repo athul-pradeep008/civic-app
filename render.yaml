@@ -1,11 +1,31 @@
 services:
   - type: web
     name: civic-issue-reporting-system
-    env: node
+    env: docker
     plan: free
-    buildCommand: npm install
-    startCommand: npm start
+    region: oregon // or closest to you
     envVars:
       - key: NODE_ENV
         value: production
-    autoDeploy: false
+      - key: PORT
+        value: 5002
+      - key: JWT_SECRET
+        generateValue: true
+      - key: MONGODB_URI
+        fromService:
+          type: pserv
+          name: civic-db
+          property: connectionString
+
+services:
+  - type: pserv
+    name: civic-db
+    env: docker
+    plan: free
+    dockerCommand: docker-entrypoint.sh mongod
+    repo: https://github.com/docker-library/mongo
+    branch: master
+    disk:
+      name: mongodb-data
+      mountPath: /data/db
+      sizeGB: 10

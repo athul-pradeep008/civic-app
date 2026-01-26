@@ -8,6 +8,11 @@ services:
       - "27017:27017"
     volumes:
       - mongodb_data:/data/db
+    healthcheck:
+      test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/test --quiet
+      interval: 10s
+      timeout: 10s
+      retries: 5
     networks:
       - civicreport-network
 
@@ -25,7 +30,8 @@ services:
       - JWT_SECRET=your_docker_jwt_secret
       - GEMINI_API_KEY=${GEMINI_API_KEY}
     depends_on:
-      - mongodb
+      mongodb:
+        condition: service_healthy
     networks:
       - civicreport-network
 
