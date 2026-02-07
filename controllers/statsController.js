@@ -1,4 +1,5 @@
-const Issue = require('../models/Issue');
+const { Issue } = require('../models');
+const { sequelize } = require('../config/database');
 
 /**
  * @desc    Get issue statistics for analytics
@@ -8,20 +9,30 @@ const Issue = require('../models/Issue');
 exports.getOverviewStats = async (req, res) => {
     try {
         // 1. Distribution by Category
-        const categoryStats = await Issue.aggregate([
-            { $group: { _id: '$category', count: { $sum: 1 } } },
-            { $sort: { count: -1 } }
-        ]);
+        const categoryStats = await Issue.findAll({
+            attributes: [
+                'category',
+                [sequelize.fn('COUNT', sequelize.col('category')), 'count']
+            ],
+            group: ['category'],
+            order: [[sequelize.literal('count'), 'DESC']]
+        });
 
         // 2. Distribution by Status
-        const statusStats = await Issue.aggregate([
-            { $group: { _id: '$status', count: { $sum: 1 } } },
-            { $sort: { count: -1 } }
-        ]);
+        // SQLite might not support complex aggregations easily without raw queries, 
+        // but simple GROUP BY works fine with Sequelize
+        const statusStats = await Issue.findAll({
+            attributes: [
+                'status',
+                [sequelize.fn('COUNT', sequelize.col('status')), 'count']
+            ],
+            group: ['status'],
+            order: [[sequelize.literal('count'), 'DESC']]
+        });
 
         // 3. Overall Totals
-        const totalIssues = await Issue.countDocuments();
-        const resolvedIssues = await Issue.countDocuments({ status: 'resolved' });
+        const totalIssues = await Issue.count();
+        const resolvedIssues = await Issue.count({ where: { status: 'resolved' } });
 
         res.status(200).json({
             success: true,

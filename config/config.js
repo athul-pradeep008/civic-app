@@ -5,7 +5,9 @@ module.exports = {
     nodeEnv: process.env.NODE_ENV || 'development',
 
     // Database
-    mongoUri: process.env.MONGODB_URI || 'mongodb://localhost:27017/civic-issues',
+    // Database - SQLite (No URI needed)
+    // mongoUri: Removed
+
 
     // JWT
     jwtSecret: process.env.JWT_SECRET || 'your_jwt_secret_key',

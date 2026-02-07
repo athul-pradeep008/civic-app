@@ -1,6 +1,7 @@
-const Issue = require('../models/Issue');
+const { Issue } = require('../models');
 const config = require('../config/config');
 const { getDistance } = require('geolib');
+const { Op } = require('sequelize');
 
 /**
  * Check for duplicate issues within a specified radius
@@ -10,19 +11,25 @@ exports.checkDuplicates = async (location, category, title) => {
         const { coordinates } = location;
         const [longitude, latitude] = coordinates;
 
-        // Find issues within radius using geospatial query
-        const nearbyIssues = await Issue.find({
-            location: {
-                $near: {
-                    $geometry: {
-                        type: 'Point',
-                        coordinates: [longitude, latitude]
-                    },
-                    $maxDistance: config.verification.duplicateRadiusMeters
+        // SQLite doesn't support $near. We'll fetch issues with same category
+        // and filter by distance in JS (which is fast enough for moderate datasets).
+        // Optimization: We could add a bounding box query here if needed.
+
+        const candidateIssues = await Issue.findAll({
+            where: {
+                category: category,
+                status: {
+                    [Op.notIn]: ['resolved', 'rejected']
                 }
-            },
-            category: category,
-            status: { $nin: ['resolved', 'rejected'] }
+            }
+        });
+
+        const nearbyIssues = candidateIssues.filter(issue => {
+            const dist = getDistance(
+                { latitude: latitude, longitude: longitude },
+                { latitude: issue.latitude, longitude: issue.longitude }
+            );
+            return dist <= config.verification.duplicateRadiusMeters;
         });
 
         // Check for similar titles (basic similarity check)
@@ -61,7 +68,7 @@ exports.calculateVerificationScore = (issue) => {
     }
 
     // Time factor - newer issues get slight boost (0-10 points)
-    const daysSinceReport = (Date.now() - issue.createdAt) / (1000 * 60 * 60 * 24);
+    const daysSinceReport = (Date.now() - new Date(issue.createdAt)) / (1000 * 60 * 60 * 24);
     if (daysSinceReport < 7) {
         score += 10 - daysSinceReport;
     }
@@ -109,9 +116,13 @@ exports.detectSpam = async (userId) => {
         // Check how many issues user has reported in last hour
         const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
 
-        const recentIssues = await Issue.countDocuments({
-            reporter: userId,
-            createdAt: { $gte: oneHourAgo }
+        const recentIssues = await Issue.count({
+            where: {
+                reporterId: userId,
+                createdAt: {
+                    [Op.gte]: oneHourAgo
+                }
+            }
         });
 
         return recentIssues >= config.verification.spamThreshold;

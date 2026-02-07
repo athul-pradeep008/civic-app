@@ -1,6 +1,4 @@
-const Vote = require('../models/Vote');
-const Issue = require('../models/Issue');
-const User = require('../models/User');
+const { Vote, Issue } = require('../models');
 const verificationService = require('../services/verificationService');
 
 /**
@@ -21,7 +19,7 @@ exports.voteIssue = async (req, res) => {
         }
 
         // Check if issue exists
-        const issue = await Issue.findById(issueId);
+        const issue = await Issue.findByPk(issueId);
         if (!issue) {
             return res.status(404).json({
                 success: false,
@@ -31,14 +29,16 @@ exports.voteIssue = async (req, res) => {
 
         // Check if user already voted
         const existingVote = await Vote.findOne({
-            issue: issueId,
-            user: req.user.id
+            where: {
+                issueId: issueId,
+                userId: req.user.id
+            }
         });
 
         if (existingVote) {
             // If same vote type, remove vote
             if (existingVote.voteType === voteType) {
-                await existingVote.deleteOne();
+                await existingVote.destroy();
 
                 // Update issue vote count
                 if (voteType === 'upvote') {
@@ -71,8 +71,8 @@ exports.voteIssue = async (req, res) => {
         } else {
             // Create new vote
             await Vote.create({
-                issue: issueId,
-                user: req.user.id,
+                issueId: issueId,
+                userId: req.user.id,
                 voteType
             });
 
@@ -90,7 +90,7 @@ exports.voteIssue = async (req, res) => {
         // Check if should auto-verify
         if (!issue.isVerified && verificationService.shouldAutoVerify(issue)) {
             issue.isVerified = true;
-            issue.verifiedAt = Date.now();
+            issue.verifiedAt = new Date();
             issue.status = 'verified';
         }
 
@@ -108,15 +108,6 @@ exports.voteIssue = async (req, res) => {
         });
     } catch (error) {
         console.error('Vote error:', error);
-
-        // Handle duplicate vote error
-        if (error.code === 11000) {
-            return res.status(400).json({
-                success: false,
-                message: 'You have already voted on this issue'
-            });
-        }
-
         res.status(500).json({
             success: false,
             message: 'Error recording vote',
@@ -135,8 +126,10 @@ exports.getUserVote = async (req, res) => {
         const { issueId } = req.params;
 
         const vote = await Vote.findOne({
-            issue: issueId,
-            user: req.user.id
+            where: {
+                issueId: issueId,
+                userId: req.user.id
+            }
         });
 
         res.status(200).json({

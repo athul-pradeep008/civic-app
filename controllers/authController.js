@@ -1,6 +1,13 @@
-const User = require('../models/User');
-const { getSignedJwtToken } = require('../middleware/auth');
+const { User } = require('../models'); // Import from index to get associations
+const { Op } = require('sequelize');
 const config = require('../config/config');
+
+/**
+ * @desc    Get signed JWT token (Helper wrapper if needed, though model has it)
+ */
+const getSignedJwtToken = (user) => {
+    return user.getSignedJwtToken();
+};
 
 /**
  * @desc    Register new user
@@ -12,7 +19,11 @@ exports.register = async (req, res) => {
         const { username, email, password } = req.body;
 
         // Check if user already exists
-        const existingUser = await User.findOne({ $or: [{ email }, { username }] });
+        const existingUser = await User.findOne({
+            where: {
+                [Op.or]: [{ email }, { username }]
+            }
+        });
 
         if (existingUser) {
             return res.status(400).json({
@@ -29,13 +40,13 @@ exports.register = async (req, res) => {
         });
 
         // Generate token
-        const token = getSignedJwtToken(user._id);
+        const token = user.getSignedJwtToken();
 
         res.status(201).json({
             success: true,
             token,
             user: {
-                id: user._id,
+                id: user.id,
                 username: user.username,
                 email: user.email,
                 role: user.role,
@@ -70,8 +81,8 @@ exports.login = async (req, res) => {
             });
         }
 
-        // Check for user (include password field)
-        const user = await User.findOne({ email }).select('+password');
+        // Check for user
+        const user = await User.findOne({ where: { email } });
 
         if (!user) {
             return res.status(401).json({
@@ -91,13 +102,13 @@ exports.login = async (req, res) => {
         }
 
         // Generate token
-        const token = getSignedJwtToken(user._id);
+        const token = user.getSignedJwtToken();
 
         res.status(200).json({
             success: true,
             token,
             user: {
-                id: user._id,
+                id: user.id,
                 username: user.username,
                 email: user.email,
                 role: user.role,
@@ -122,7 +133,9 @@ exports.login = async (req, res) => {
  */
 exports.getMe = async (req, res) => {
     try {
-        const user = await User.findById(req.user.id).populate('issuesReported');
+        const user = await User.findByPk(req.user.id, {
+            include: ['issuesReported'] // Using alias from associations
+        });
 
         res.status(200).json({
             success: true,
@@ -138,17 +151,6 @@ exports.getMe = async (req, res) => {
     }
 };
 
-/**
- * @desc    Logout user / clear token
- * @route   POST /api/auth/logout
- * @access  Private
- */
-exports.logout = async (req, res) => {
-    res.status(200).json({
-        success: true,
-        message: 'Logged out successfully'
-    });
-};
 /**
  * @desc    Logout user / clear token
  * @route   POST /api/auth/logout
@@ -188,7 +190,11 @@ exports.googleLogin = async (req, res) => {
         const { email, sub: googleId, name, picture } = googleData;
 
         // Find or Create User
-        let user = await User.findOne({ $or: [{ googleId }, { email }] });
+        let user = await User.findOne({
+            where: {
+                [Op.or]: [{ googleId }, { email }]
+            }
+        });
 
         if (!user) {
             // Create new user (Generate random password for schema validation)
@@ -208,13 +214,13 @@ exports.googleLogin = async (req, res) => {
             }
         }
 
-        const jwtToken = getSignedJwtToken(user._id);
+        const jwtToken = user.getSignedJwtToken();
 
         res.status(200).json({
             success: true,
             token: jwtToken,
             user: {
-                id: user._id,
+                id: user.id,
                 username: user.username,
                 email: user.email,
                 role: user.role,
@@ -245,23 +251,18 @@ exports.sendOtp = async (req, res) => {
         const otp = Math.floor(100000 + Math.random() * 900000).toString();
         const otpExpires = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
 
-        // Find user to attach OTP (Upsert if using Phone, but normally we check registration)
-        // For simplicity: We require an existing user or create a temporary record? 
-        // Strategy: Just check if user exists. If not, we might need a registration flow.
-        // For this implementation, we'll allow OTP for existing users OR new phone users (auto-create).
+        let query = {};
+        if (email) query.email = email;
+        else query.phoneNumber = phone;
 
-        let query = email ? { email } : { phoneNumber: phone };
-        let user = await User.findOne(query);
+        let user = await User.findOne({ where: query });
 
         if (!user) {
-            // If user doesn't exist, we can either block or create a "stub" user.
-            // For smooth UX, we'll permit it for Phone, but Email usually requires full registration.
-            // Let's create a stub user for Phone, but block for Email if not found (or treat as registration).
             if (phone) {
                 user = await User.create({
                     phoneNumber: phone,
                     username: `user_${phone.slice(-4)}`,
-                    email: `temp_${phone}@civic.local`, // Dummy email to satisfy schema if required
+                    email: `temp_${phone}@civic.local`,
                     password: Math.random().toString(36).slice(-8)
                 });
             } else {
@@ -269,28 +270,20 @@ exports.sendOtp = async (req, res) => {
             }
         }
 
-        // Save OTP hash (plain for MVP simplicity, use bcrypt in prod)
+        // Save OTP hash
         user.otp = otp;
         user.otpExpires = otpExpires;
-        await user.save({ validateBeforeSave: false });
+        await user.save();
 
         // Send OTP
         if (email) {
-            // Use Nodemailer
-            const nodemailer = require('nodemailer');
-            const transporter = nodemailer.createTransport(config.email); // Assuming config has email settings
-
-            // Note: If config.email is missing credentials, this will fail. 
-            // Fallback: Log to console if no creds
-            if (!config.email.user) {
+            const result = await require('../services/notificationService').sendEmail(
+                email,
+                'Your CivicReport Login Code',
+                `Your login code is: ${otp}`
+            );
+            if (!result) { // Fallback if email service fails/not configured
                 console.log(`[DEV MODE] Email OTP for ${email}: ${otp}`);
-            } else {
-                await transporter.sendMail({
-                    from: config.email.from,
-                    to: email,
-                    subject: 'Your CivicReport Login Code',
-                    text: `Your login code is: ${otp}`
-                });
             }
         } else {
             // MOCK Phone SMS
@@ -314,8 +307,11 @@ exports.verifyOtp = async (req, res) => {
     try {
         const { email, phone, otp } = req.body;
 
-        let query = email ? { email } : { phoneNumber: phone };
-        const user = await User.findOne(query).select('+otp +otpExpires');
+        let query = {};
+        if (email) query.email = email;
+        else query.phoneNumber = phone;
+
+        const user = await User.findOne({ where: query });
 
         if (!user) {
             return res.status(400).json({ success: false, message: 'User not found' });
@@ -325,22 +321,22 @@ exports.verifyOtp = async (req, res) => {
             return res.status(400).json({ success: false, message: 'Invalid Code' });
         }
 
-        if (user.otpExpires < Date.now()) {
+        if (new Date(user.otpExpires) < new Date()) {
             return res.status(400).json({ success: false, message: 'Code expired' });
         }
 
         // clear OTP
-        user.otp = undefined;
-        user.otpExpires = undefined;
-        await user.save({ validateBeforeSave: false });
+        user.otp = null;
+        user.otpExpires = null;
+        await user.save();
 
-        const token = getSignedJwtToken(user._id);
+        const token = user.getSignedJwtToken();
 
         res.status(200).json({
             success: true,
             token,
             user: {
-                id: user._id,
+                id: user.id,
                 username: user.username,
                 email: user.email,
                 role: user.role,

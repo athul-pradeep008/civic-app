@@ -1,28 +1,24 @@
-const mongoose = require('mongoose');
+const { DataTypes } = require('sequelize');
+const { sequelize } = require('../config/database');
 
-const voteSchema = new mongoose.Schema({
-    issue: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'Issue',
-        required: true
-    },
-    user: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'User',
-        required: true
+const Vote = sequelize.define('Vote', {
+    id: {
+        type: DataTypes.INTEGER,
+        primaryKey: true,
+        autoIncrement: true
     },
     voteType: {
-        type: String,
-        enum: ['upvote', 'downvote'],
-        required: true
+        type: DataTypes.ENUM('upvote', 'downvote'),
+        allowNull: false
     },
-    createdAt: {
-        type: Date,
-        default: Date.now
+    userId: {
+        type: DataTypes.INTEGER,
+        allowNull: false
+    },
+    issueId: {
+        type: DataTypes.INTEGER,
+        allowNull: false
     }
 });
 
-// Ensure a user can only vote once per issue
-voteSchema.index({ issue: 1, user: 1 }, { unique: true });
-
-module.exports = mongoose.model('Vote', voteSchema);
+module.exports = Vote;

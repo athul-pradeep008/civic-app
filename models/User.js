@@ -1,88 +1,93 @@
-const mongoose = require('mongoose');
+const { DataTypes } = require('sequelize');
+const { sequelize } = require('../config/database');
 const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
+const config = require('../config/config');
 
-const userSchema = new mongoose.Schema({
+const User = sequelize.define('User', {
+    id: {
+        type: DataTypes.INTEGER,
+        primaryKey: true,
+        autoIncrement: true
+    },
     username: {
-        type: String,
-        required: [true, 'Please provide a username'],
+        type: DataTypes.STRING,
+        allowNull: false,
         unique: true,
-        trim: true,
-        minlength: [3, 'Username must be at least 3 characters'],
-        maxlength: [30, 'Username cannot exceed 30 characters']
-    },
-    email: {
-        type: String,
-        required: [true, 'Please provide an email'],
-        unique: true,
-        lowercase: true,
-        match: [/^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/, 'Please provide a valid email']
-    },
-    password: {
-        type: String,
-        required: [true, 'Please provide a password'],
-        minlength: [6, 'Password must be at least 6 characters'],
-        select: false
-    },
-    role: {
-        type: String,
-        enum: ['citizen', 'admin'],
-        default: 'citizen'
-    },
-    reputationScore: {
-        type: Number,
-        default: 0
-    },
-    issuesReported: [{
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'Issue'
-    }],
-    isActive: {
-        type: Boolean,
-        default: true
-    },
-    profileImage: {
-        type: String,
-        default: function () {
-            return `https://ui-avatars.com/api/?name=${this.username}&background=random&color=fff&size=256`;
+        validate: {
+            len: [3, 30]
         }
     },
-    // Authentication Extensions
-    googleId: {
-        type: String,
+    email: {
+        type: DataTypes.STRING,
+        allowNull: false,
         unique: true,
-        sparse: true
+        validate: {
+            isEmail: true
+        }
+    },
+    password: {
+        type: DataTypes.STRING,
+        allowNull: false
+    },
+    role: {
+        type: DataTypes.ENUM('citizen', 'admin'),
+        defaultValue: 'citizen'
+    },
+    reputationScore: {
+        type: DataTypes.INTEGER,
+        defaultValue: 0
+    },
+    isActive: {
+        type: DataTypes.BOOLEAN,
+        defaultValue: true
+    },
+    profileImage: {
+        type: DataTypes.STRING,
+        defaultValue: null
+    },
+    googleId: {
+        type: DataTypes.STRING,
+        unique: true,
+        allowNull: true
     },
     phoneNumber: {
-        type: String,
+        type: DataTypes.STRING,
         unique: true,
-        sparse: true
+        allowNull: true
     },
     otp: {
-        type: String,
-        select: false // Do not return OTP in queries
+        type: DataTypes.STRING,
+        allowNull: true
     },
     otpExpires: {
-        type: Date,
-        select: false
-    },
-    createdAt: {
-        type: Date,
-        default: Date.now
+        type: DataTypes.DATE,
+        allowNull: true
+    }
+}, {
+    hooks: {
+        beforeSave: async (user) => {
+            if (user.changed('password')) {
+                const salt = await bcrypt.genSalt(10);
+                user.password = await bcrypt.hash(user.password, salt);
+            }
+            if (!user.profileImage && user.username) {
+                user.profileImage = `https://ui-avatars.com/api/?name=${user.username}&background=random&color=fff&size=256`;
+            }
+        }
     }
 });
 
-// Hash password before saving
-userSchema.pre('save', async function (next) {
-    if (!this.isModified('password')) {
-        next();
-    }
-    const salt = await bcrypt.genSalt(10);
-    this.password = await bcrypt.hash(this.password, salt);
-});
-
-// Method to compare password
-userSchema.methods.matchPassword = async function (enteredPassword) {
+// Instance method to compare password
+User.prototype.matchPassword = async function (enteredPassword) {
     return await bcrypt.compare(enteredPassword, this.password);
 };
 
-module.exports = mongoose.model('User', userSchema);
+// Start: Helper to generate JWT
+User.prototype.getSignedJwtToken = function () {
+    return jwt.sign({ id: this.id }, config.jwtSecret, {
+        expiresIn: config.jwtExpire
+    });
+};
+
+module.exports = User;

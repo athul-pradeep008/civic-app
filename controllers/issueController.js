@@ -1,9 +1,10 @@
-const Issue = require('../models/Issue');
-const User = require('../models/User');
+const { Issue, User } = require('../models');
 const verificationService = require('../services/verificationService');
 const notificationService = require('../services/notificationService');
 const fs = require('fs').promises;
 const path = require('path');
+const { Op } = require('sequelize');
+const { getDistance } = require('geolib');
 
 /**
  * @desc    Create new issue
@@ -43,7 +44,7 @@ exports.createIssue = async (req, res) => {
         );
 
         // Process uploaded images
-        const images = [];
+        let images = [];
         if (req.files && req.files.length > 0) {
             for (const file of req.files) {
                 images.push({
@@ -58,18 +59,15 @@ exports.createIssue = async (req, res) => {
             title,
             description,
             category,
-            location: parsedLocation,
+            location: parsedLocation, // Removed, but we use logic below
+            latitude: parsedLocation.coordinates[1],
+            longitude: parsedLocation.coordinates[0],
             address,
             priority: priority || 'medium',
             images,
-            reporter: req.user.id,
+            reporterId: req.user.id,
             isDuplicate: duplicateCheck.isDuplicate,
-            duplicateOf: duplicateCheck.isDuplicate ? duplicateCheck.duplicateIssues[0]?._id : null
-        });
-
-        // Update user's reported issues
-        await User.findByIdAndUpdate(req.user.id, {
-            $push: { issuesReported: issue._id }
+            duplicateOfId: duplicateCheck.isDuplicate ? duplicateCheck.duplicateIssues[0]?.id : null
         });
 
         // Notify admin
@@ -110,35 +108,38 @@ exports.getIssues = async (req, res) => {
         const { category, status, priority, search, limit = 50, page = 1 } = req.query;
 
         // Build query
-        const query = {};
+        const where = {};
 
-        if (category) query.category = category;
-        if (status) query.status = status;
-        if (priority) query.priority = priority;
+        if (category) where.category = category;
+        if (status) where.status = status;
+        if (priority) where.priority = priority;
         if (search) {
-            query.$or = [
-                { title: { $regex: search, $options: 'i' } },
-                { description: { $regex: search, $options: 'i' } },
-                { address: { $regex: search, $options: 'i' } }
+            where[Op.or] = [
+                { title: { [Op.like]: `%${search}%` } },
+                { description: { [Op.like]: `%${search}%` } },
+                { address: { [Op.like]: `%${search}%` } }
             ];
         }
 
         // Execute query with pagination
-        const issues = await Issue.find(query)
-            .populate('reporter', 'username reputationScore')
-            .sort({ createdAt: -1 })
-            .limit(parseInt(limit))
-            .skip((parseInt(page) - 1) * parseInt(limit));
-
-        const total = await Issue.countDocuments(query);
+        const offset = (parseInt(page) - 1) * parseInt(limit);
+        const { count, rows } = await Issue.findAndCountAll({
+            where,
+            include: [
+                { model: User, as: 'reporter', attributes: ['username', 'reputationScore'] }
+            ],
+            order: [['createdAt', 'DESC']],
+            limit: parseInt(limit),
+            offset: offset
+        });
 
         res.status(200).json({
             success: true,
-            count: issues.length,
-            total,
+            count: rows.length,
+            total: count,
             page: parseInt(page),
-            pages: Math.ceil(total / parseInt(limit)),
-            data: issues
+            pages: Math.ceil(count / parseInt(limit)),
+            data: rows
         });
     } catch (error) {
         console.error('Get issues error:', error);
@@ -157,9 +158,12 @@ exports.getIssues = async (req, res) => {
  */
 exports.getIssue = async (req, res) => {
     try {
-        const issue = await Issue.findById(req.params.id)
-            .populate('reporter', 'username email reputationScore')
-            .populate('duplicateOf', 'title status');
+        const issue = await Issue.findByPk(req.params.id, {
+            include: [
+                { model: User, as: 'reporter', attributes: ['username', 'email', 'reputationScore'] },
+                { model: Issue, as: 'duplicateOf', attributes: ['title', 'status'] }
+            ]
+        });
 
         if (!issue) {
             return res.status(404).json({
@@ -190,31 +194,31 @@ exports.getIssue = async (req, res) => {
 exports.getNearbyIssues = async (req, res) => {
     try {
         const { longitude, latitude } = req.params;
-        const { maxDistance = 5000, category, status } = req.query; // Default 5km
+        const { maxDistance = 5000, category, status } = req.query;
 
-        const query = {
-            location: {
-                $near: {
-                    $geometry: {
-                        type: 'Point',
-                        coordinates: [parseFloat(longitude), parseFloat(latitude)]
-                    },
-                    $maxDistance: parseInt(maxDistance)
-                }
-            }
-        };
+        const where = {};
+        if (category) where.category = category;
+        if (status) where.status = status;
 
-        if (category) query.category = category;
-        if (status) query.status = status;
+        // Optimization: We could use bounding box here, but for simplicity fetch all matches
+        // and filter in memory. For production with millions of rows, use bounding box.
+        const issues = await Issue.findAll({
+            where,
+            include: [{ model: User, as: 'reporter', attributes: ['username', 'reputationScore'] }]
+        });
 
-        const issues = await Issue.find(query)
-            .populate('reporter', 'username reputationScore')
-            .limit(50);
+        const nearbyIssues = issues.filter(issue => {
+            const dist = getDistance(
+                { latitude: parseFloat(latitude), longitude: parseFloat(longitude) },
+                { latitude: issue.latitude, longitude: issue.longitude }
+            );
+            return dist <= parseInt(maxDistance);
+        });
 
         res.status(200).json({
             success: true,
-            count: issues.length,
-            data: issues
+            count: nearbyIssues.length,
+            data: nearbyIssues.slice(0, 50) // Limit return size
         });
     } catch (error) {
         console.error('Get nearby issues error:', error);
@@ -233,7 +237,7 @@ exports.getNearbyIssues = async (req, res) => {
  */
 exports.updateIssue = async (req, res) => {
     try {
-        let issue = await Issue.findById(req.params.id);
+        let issue = await Issue.findByPk(req.params.id);
 
         if (!issue) {
             return res.status(404).json({
@@ -243,7 +247,7 @@ exports.updateIssue = async (req, res) => {
         }
 
         // Check ownership
-        if (issue.reporter.toString() !== req.user.id && req.user.role !== 'admin') {
+        if (issue.reporterId !== req.user.id && req.user.role !== 'admin') {
             return res.status(403).json({
                 success: false,
                 message: 'Not authorized to update this issue'
@@ -252,16 +256,12 @@ exports.updateIssue = async (req, res) => {
 
         // Only allow updating certain fields
         const { title, description, priority } = req.body;
-        const updateData = {};
 
-        if (title) updateData.title = title;
-        if (description) updateData.description = description;
-        if (priority) updateData.priority = priority;
+        if (title) issue.title = title;
+        if (description) issue.description = description;
+        if (priority) issue.priority = priority;
 
-        issue = await Issue.findByIdAndUpdate(req.params.id, updateData, {
-            new: true,
-            runValidators: true
-        });
+        await issue.save();
 
         res.status(200).json({
             success: true,
@@ -284,7 +284,7 @@ exports.updateIssue = async (req, res) => {
  */
 exports.deleteIssue = async (req, res) => {
     try {
-        const issue = await Issue.findById(req.params.id);
+        const issue = await Issue.findByPk(req.params.id);
 
         if (!issue) {
             return res.status(404).json({
@@ -294,7 +294,7 @@ exports.deleteIssue = async (req, res) => {
         }
 
         // Check ownership
-        if (issue.reporter.toString() !== req.user.id && req.user.role !== 'admin') {
+        if (issue.reporterId !== req.user.id && req.user.role !== 'admin') {
             return res.status(403).json({
                 success: false,
                 message: 'Not authorized to delete this issue'
@@ -302,15 +302,17 @@ exports.deleteIssue = async (req, res) => {
         }
 
         // Delete associated images
-        for (const image of issue.images) {
-            try {
-                await fs.unlink(image.path);
-            } catch (err) {
-                console.error('Error deleting image:', err);
+        if (issue.images && Array.isArray(issue.images)) {
+            for (const image of issue.images) {
+                try {
+                    await fs.unlink(image.path);
+                } catch (err) {
+                    // Ignore missing files
+                }
             }
         }
 
-        await issue.deleteOne();
+        await issue.destroy();
 
         res.status(200).json({
             success: true,

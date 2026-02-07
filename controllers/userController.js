@@ -1,4 +1,4 @@
-const User = require('../models/User');
+const { User } = require('../models');
 
 /**
  * @desc    Get leaderboard (top 10 users by reputation)
@@ -6,10 +6,12 @@ const User = require('../models/User');
  */
 exports.getLeaderboard = async (req, res) => {
     try {
-        const users = await User.find({ role: 'citizen' }) // Filter admins if needed
-            .sort({ reputationScore: -1 })
-            .limit(10)
-            .select('username reputationScore'); // Only send necessary data
+        const users = await User.findAll({
+            where: { role: 'citizen' },
+            order: [['reputationScore', 'DESC']],
+            limit: 10,
+            attributes: ['username', 'reputationScore']
+        });
 
         res.status(200).json({
             success: true,

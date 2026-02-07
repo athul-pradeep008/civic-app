@@ -5,7 +5,7 @@ const cors = require('cors');
 const path = require('path');
 const fs = require('fs');
 
-const connectDB = require('./config/database');
+const { connectDB } = require('./config/database');
 const config = require('./config/config');
 
 // Add Global Crash Loggers

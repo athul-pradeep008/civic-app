@@ -1,21 +1,28 @@
-const mongoose = require('mongoose');
+const { DataTypes } = require('sequelize');
+const { sequelize } = require('../config/database');
 
-const issueSchema = new mongoose.Schema({
+const Issue = sequelize.define('Issue', {
+    id: {
+        type: DataTypes.INTEGER,
+        primaryKey: true,
+        autoIncrement: true
+    },
     title: {
-        type: String,
-        required: [true, 'Please provide a title'],
-        trim: true,
-        maxlength: [100, 'Title cannot exceed 100 characters']
+        type: DataTypes.STRING,
+        allowNull: false,
+        validate: {
+            len: [1, 100]
+        }
     },
     description: {
-        type: String,
-        required: [true, 'Please provide a description'],
-        maxlength: [1000, 'Description cannot exceed 1000 characters']
+        type: DataTypes.TEXT,
+        allowNull: false,
+        validate: {
+            len: [1, 1000]
+        }
     },
     category: {
-        type: String,
-        required: [true, 'Please select a category'],
-        enum: [
+        type: DataTypes.ENUM(
             'pothole',
             'streetlight',
             'garbage',
@@ -26,90 +33,65 @@ const issueSchema = new mongoose.Schema({
             'park_maintenance',
             'graffiti',
             'other'
-        ]
+        ),
+        allowNull: false
     },
-    location: {
-        type: {
-            type: String,
-            enum: ['Point'],
-            required: true
-        },
-        coordinates: {
-            type: [Number], // [longitude, latitude]
-            required: true
-        }
+    // Location: storing as simple lat/lng for SQLite
+    latitude: {
+        type: DataTypes.FLOAT,
+        allowNull: false
+    },
+    longitude: {
+        type: DataTypes.FLOAT,
+        allowNull: false
     },
     address: {
-        type: String,
-        required: [true, 'Please provide an address']
+        type: DataTypes.STRING,
+        allowNull: false
     },
-    images: [{
-        filename: String,
-        path: String,
-        uploadedAt: {
-            type: Date,
-            default: Date.now
-        }
-    }],
-    reporter: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'User',
-        required: true
+    images: {
+        type: DataTypes.JSON, // Store images array as JSON string
+        defaultValue: []
     },
     status: {
-        type: String,
-        enum: ['reported', 'verified', 'in_progress', 'resolved', 'rejected'],
-        default: 'reported'
+        type: DataTypes.ENUM('reported', 'verified', 'in_progress', 'resolved', 'rejected'),
+        defaultValue: 'reported'
     },
     priority: {
-        type: String,
-        enum: ['low', 'medium', 'high', 'critical'],
-        default: 'medium'
+        type: DataTypes.ENUM('low', 'medium', 'high', 'critical'),
+        defaultValue: 'medium'
     },
     upvotes: {
-        type: Number,
-        default: 0
+        type: DataTypes.INTEGER,
+        defaultValue: 0
     },
     downvotes: {
-        type: Number,
-        default: 0
+        type: DataTypes.INTEGER,
+        defaultValue: 0
     },
     verificationScore: {
-        type: Number,
-        default: 0
+        type: DataTypes.INTEGER,
+        defaultValue: 0
     },
     isDuplicate: {
-        type: Boolean,
-        default: false
+        type: DataTypes.BOOLEAN,
+        defaultValue: false
     },
-    duplicateOf: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'Issue'
+    duplicateOfId: {
+        type: DataTypes.INTEGER,
+        allowNull: true
     },
     isVerified: {
-        type: Boolean,
-        default: false
+        type: DataTypes.BOOLEAN,
+        defaultValue: false
     },
-    verifiedAt: Date,
-    resolvedAt: Date,
-    adminNotes: String,
-    createdAt: {
-        type: Date,
-        default: Date.now
-    },
-    updatedAt: {
-        type: Date,
-        default: Date.now
+    verifiedAt: DataTypes.DATE,
+    resolvedAt: DataTypes.DATE,
+    adminNotes: DataTypes.TEXT,
+    reporterId: {
+        type: DataTypes.INTEGER,
+        allowNull: false
     }
 });
 
-// Create geospatial index for location-based queries
-issueSchema.index({ location: '2dsphere' });
-
-// Update timestamp on save
-issueSchema.pre('save', function (next) {
-    this.updatedAt = Date.now();
-    next();
-});
-
-module.exports = mongoose.model('Issue', issueSchema);
+module.exports = Issue;

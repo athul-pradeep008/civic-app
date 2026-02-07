@@ -1,7 +1,6 @@
-const Issue = require('../models/Issue');
-const User = require('../models/User');
-const Vote = require('../models/Vote');
+const { Issue, User, Vote } = require('../models');
 const notificationService = require('../services/notificationService');
+const { sequelize } = require('../config/database');
 
 /**
  * @desc    Update issue status (admin only)
@@ -12,7 +11,9 @@ exports.updateIssueStatus = async (req, res) => {
     try {
         const { status, adminNotes } = req.body;
 
-        const issue = await Issue.findById(req.params.id).populate('reporter');
+        const issue = await Issue.findByPk(req.params.id, {
+            include: [{ model: User, as: 'reporter' }]
+        });
 
         if (!issue) {
             return res.status(404).json({
@@ -30,30 +31,34 @@ exports.updateIssueStatus = async (req, res) => {
 
         if (status === 'verified' && !issue.isVerified) {
             issue.isVerified = true;
-            issue.verifiedAt = Date.now();
+            issue.verifiedAt = new Date();
         }
 
         if (status === 'resolved') {
-            issue.resolvedAt = Date.now();
+            issue.resolvedAt = new Date();
             // Increase reporter's reputation
-            await User.findByIdAndUpdate(issue.reporter._id, {
-                $inc: { reputationScore: 10 }
-            });
+            if (issue.reporter) {
+                await issue.reporter.increment('reputationScore', { by: 10 });
+            }
         }
 
         await issue.save();
 
         // Notify reporter
-        await notificationService.notifyIssueStatusUpdate(issue.reporter, issue, status);
+        if (issue.reporter) {
+            await notificationService.notifyIssueStatusUpdate(issue.reporter, issue, status);
+        }
 
         // Real-time: Emit status update event
         const io = req.app.get('io');
-        io.emit('issue_updated', {
-            id: issue._id,
-            title: issue.title,
-            status: status,
-            reporterId: issue.reporter._id
-        });
+        if (io) {
+            io.emit('issue_updated', {
+                id: issue.id,
+                title: issue.title,
+                status: status,
+                reporterId: issue.reporterId
+            });
+        }
 
         res.status(200).json({
             success: true,
@@ -77,31 +82,31 @@ exports.updateIssueStatus = async (req, res) => {
  */
 exports.getStatistics = async (req, res) => {
     try {
-        const totalIssues = await Issue.countDocuments();
-        const reportedIssues = await Issue.countDocuments({ status: 'reported' });
-        const verifiedIssues = await Issue.countDocuments({ status: 'verified' });
-        const inProgressIssues = await Issue.countDocuments({ status: 'in_progress' });
-        const resolvedIssues = await Issue.countDocuments({ status: 'resolved' });
-        const rejectedIssues = await Issue.countDocuments({ status: 'rejected' });
+        const totalIssues = await Issue.count();
+        const reportedIssues = await Issue.count({ where: { status: 'reported' } });
+        const verifiedIssues = await Issue.count({ where: { status: 'verified' } });
+        const inProgressIssues = await Issue.count({ where: { status: 'in_progress' } });
+        const resolvedIssues = await Issue.count({ where: { status: 'resolved' } });
+        const rejectedIssues = await Issue.count({ where: { status: 'rejected' } });
 
-        const totalUsers = await User.countDocuments();
-        const totalVotes = await Vote.countDocuments();
+        const totalUsers = await User.count();
+        const totalVotes = await Vote.count();
 
         // Issues by category
-        const issuesByCategory = await Issue.aggregate([
-            {
-                $group: {
-                    _id: '$category',
-                    count: { $sum: 1 }
-                }
-            }
-        ]);
+        const issuesByCategory = await Issue.findAll({
+            attributes: [
+                'category',
+                [sequelize.fn('COUNT', sequelize.col('category')), 'count']
+            ],
+            group: ['category']
+        });
 
         // Recent issues
-        const recentIssues = await Issue.find()
-            .populate('reporter', 'username')
-            .sort({ createdAt: -1 })
-            .limit(10);
+        const recentIssues = await Issue.findAll({
+            include: [{ model: User, as: 'reporter', attributes: ['username'] }],
+            order: [['createdAt', 'DESC']],
+            limit: 10
+        });
 
         res.status(200).json({
             success: true,
@@ -137,7 +142,7 @@ exports.getStatistics = async (req, res) => {
  */
 exports.deleteIssue = async (req, res) => {
     try {
-        const issue = await Issue.findById(req.params.id);
+        const issue = await Issue.findByPk(req.params.id);
 
         if (!issue) {
             return res.status(404).json({
@@ -146,7 +151,7 @@ exports.deleteIssue = async (req, res) => {
             });
         }
 
-        await issue.deleteOne();
+        await issue.destroy();
 
         res.status(200).json({
             success: true,
@@ -169,9 +174,10 @@ exports.deleteIssue = async (req, res) => {
  */
 exports.getUsers = async (req, res) => {
     try {
-        const users = await User.find()
-            .select('-password')
-            .sort({ createdAt: -1 });
+        const users = await User.findAll({
+            attributes: { exclude: ['password'] },
+            order: [['createdAt', 'DESC']]
+        });
 
         res.status(200).json({
             success: true,
