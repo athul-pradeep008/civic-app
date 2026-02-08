@@ -32,7 +32,7 @@ A comprehensive web application for reporting and tracking civic issues with enh
 ### Backend
 - **Runtime**: Node.js
 - **Framework**: Express.js
-- **Database**: MongoDB with Mongoose ODM
+- **Database**: SQLite with Sequelize ORM
 - **Authentication**: JWT (JSON Web Tokens)
 - **File Upload**: Multer
 - **Validation**: Express-validator
