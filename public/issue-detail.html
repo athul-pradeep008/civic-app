@@ -63,8 +63,14 @@
         displayIssue(currentIssue);
         document.getElementById('loading').classList.add('hidden');
       } catch (error) {
+        console.error('Error loading issue:', error);
         document.getElementById('loading').classList.add('hidden');
-        Validation.showAlert('Failed to load issue details', 'error');
+        const msg = error.message || 'Failed to load issue details';
+        Validation.showAlert(msg, 'error');
+        // Optional: Redirect if 404
+        if (msg.includes('not found')) {
+            setTimeout(() => window.location.href = '/issues.html', 2000);
+        }
       }
     }
 

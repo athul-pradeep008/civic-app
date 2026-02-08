@@ -61,6 +61,16 @@ const Issue = sequelize.define('Issue', {
         type: DataTypes.ENUM('low', 'medium', 'high', 'critical'),
         defaultValue: 'medium'
     },
+    // Virtual field for frontend compatibility (GeoJSON format)
+    location: {
+        type: DataTypes.VIRTUAL,
+        get() {
+            return {
+                type: 'Point',
+                coordinates: [this.longitude, this.latitude]
+            };
+        }
+    },
     upvotes: {
         type: DataTypes.INTEGER,
         defaultValue: 0

@@ -1173,6 +1173,7 @@ select.form-control {
 }
 
 .auth-container {
+  width: 90%;
   max-width: 480px;
   margin: 0 auto;
 }
@@ -1502,4 +1503,8 @@ select.form-control {
   background: white;
   color: #333;
   border: 1px solid #ccc;
+}
+/* Payment Icons */
+.payment-icon {
+    font-size: 2rem;
 }

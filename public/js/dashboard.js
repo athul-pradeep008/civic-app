@@ -57,37 +57,60 @@ function initializeSocket() {
 
 // --- CORE DATA LOADING ---
 async function loadDashboard(isUpdate = false) {
+    if (!isUpdate) document.getElementById('loading').classList.remove('hidden');
+
     try {
-        if (!isUpdate) document.getElementById('loading').classList.remove('hidden');
+        const userPromise = API.auth.getMe();
+        const issuesPromise = API.issues.getAll({ limit: 100 });
 
-        const user = await API.auth.getMe();
-        const issues = await API.issues.getAll({ limit: 100 });
+        // Fetch stats only on initial load
+        const statsPromise = !isUpdate ? API.stats.getOverview() : Promise.resolve(null);
 
-        // Filter client-side for "My Dashboard" specific views
-        const myIssues = issues.data.filter(issue => issue.reporter._id === user.data._id);
-        const pending = myIssues.filter(i => ['reported', 'verified', 'in_progress'].includes(i.status));
-        const resolved = myIssues.filter(i => i.status === 'resolved');
+        // Execute all promises safely
+        const [userResult, issuesResult, statsResult] = await Promise.allSettled([
+            userPromise,
+            issuesPromise,
+            statsPromise
+        ]);
 
-        // Update Stats DOM
-        setText('total-issues', myIssues.length);
-        setText('pending-issues', pending.length);
-        setText('resolved-issues', resolved.length);
-        setText('reputation', user.data.reputationScore);
+        // Handle User Data
+        if (userResult.status === 'fulfilled') {
+            const user = userResult.value;
+            setText('reputation', user.data.reputationScore);
 
-        // Render Visuals
-        if (!isUpdate) { // Don't re-render charts on every socket update to save perf
-            const globalStats = await API.stats.getOverview();
-            renderCharts(globalStats.data);
-            loadLeaderboard();
+            // Handle Issues if User Fetch succeeded (needed for filter)
+            if (issuesResult.status === 'fulfilled') {
+                const issues = issuesResult.value;
+                const myIssues = issues.data.filter(issue => issue.reporter._id === user.data._id);
+                const pending = myIssues.filter(i => ['reported', 'verified', 'in_progress'].includes(i.status));
+                const resolved = myIssues.filter(i => i.status === 'resolved');
+
+                setText('total-issues', myIssues.length);
+                setText('pending-issues', pending.length);
+                setText('resolved-issues', resolved.length);
+
+                displayMyIssues(myIssues);
+            } else {
+                console.error('Failed to load issues:', issuesResult.reason);
+                showToast('Failed to load issues', 'error');
+            }
+        } else {
+            throw new Error('Failed to load user profile');
         }
 
-        displayMyIssues(myIssues);
-        if (!isUpdate) document.getElementById('loading').classList.add('hidden');
+        // Handle Stats (Optional)
+        if (!isUpdate && statsResult && statsResult.status === 'fulfilled' && statsResult.value) {
+            renderCharts(statsResult.value.data);
+            loadLeaderboard();
+        } else if (statsResult && statsResult.status === 'rejected') {
+            console.warn('Failed to load stats (non-critical):', statsResult.reason);
+        }
 
     } catch (error) {
-        document.getElementById('loading').classList.add('hidden');
-        console.error(error);
-        if (!isUpdate) Validation.showAlert('Failed to load dashboard', 'error');
+        console.error('Critical Dashboard Error:', error);
+        if (!isUpdate) Validation.showAlert('Failed to load dashboard: ' + error.message, 'error');
+    } finally {
+        if (!isUpdate) document.getElementById('loading').classList.add('hidden');
     }
 }
 

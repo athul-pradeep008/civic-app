@@ -23,7 +23,12 @@ document.addEventListener('DOMContentLoaded', () => {
     fetch('/api/auth/config')
         .then(res => res.json())
         .then(data => {
-            if (data.googleClientId && data.googleClientId !== 'your_google_client_id_here') {
+            const hasValidClientId = data.googleClientId &&
+                data.googleClientId !== 'your_google_client_id_here' &&
+                data.googleClientId.includes('.apps.googleusercontent.com');
+
+            if (hasValidClientId) {
+                console.log('✅ Google Auth: Initializing with Client ID');
                 // Initialize Real Google Auth
                 const gBtn = document.getElementById('g_id_onload');
                 if (gBtn) gBtn.setAttribute('data-client_id', data.googleClientId);
@@ -40,6 +45,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     );
                 }
             } else {
+                console.warn('⚠️ Google Auth: Missing or Invalid Client ID. Enable Demo Mode.');
                 // Fallback to Demo Mode
                 document.getElementById('google-demo-fallback').classList.remove('hidden');
                 const realBtn = document.querySelector('.g_id_signin');

@@ -17,11 +17,12 @@ const getSignedJwtToken = (user) => {
 exports.register = async (req, res) => {
     try {
         const { username, email, password } = req.body;
+        const lowerEmail = email.toLowerCase();
 
         // Check if user already exists
         const existingUser = await User.findOne({
             where: {
-                [Op.or]: [{ email }, { username }]
+                [Op.or]: [{ email: lowerEmail }, { username }]
             }
         });
 
@@ -35,7 +36,7 @@ exports.register = async (req, res) => {
         // Create user
         const user = await User.create({
             username,
-            email,
+            email: lowerEmail,
             password
         });
 
@@ -81,10 +82,15 @@ exports.login = async (req, res) => {
             });
         }
 
-        // Check for user
-        const user = await User.findOne({ where: { email } });
+        // Check for user (Normalize email)
+        const user = await User.findOne({
+            where: {
+                email: email.toLowerCase()
+            }
+        });
 
         if (!user) {
+            console.warn(`[AUTH] Login Failed: User not found for email ${email}`);
             return res.status(401).json({
                 success: false,
                 message: 'Invalid credentials'
@@ -95,6 +101,7 @@ exports.login = async (req, res) => {
         const isMatch = await user.matchPassword(password);
 
         if (!isMatch) {
+            console.warn(`[AUTH] Login Failed: Password mismatch for user ${email}`);
             return res.status(401).json({
                 success: false,
                 message: 'Invalid credentials'
