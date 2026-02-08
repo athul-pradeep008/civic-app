@@ -126,7 +126,7 @@ exports.getIssues = async (req, res) => {
         const { count, rows } = await Issue.findAndCountAll({
             where,
             include: [
-                { model: User, as: 'reporter', attributes: ['username', 'reputationScore'] }
+                { model: User, as: 'reporter', attributes: ['id', 'username', 'reputationScore'] }
             ],
             order: [['createdAt', 'DESC']],
             limit: parseInt(limit),
@@ -160,9 +160,9 @@ exports.getIssue = async (req, res) => {
     try {
         const issue = await Issue.findByPk(req.params.id, {
             include: [
-                { model: User, as: 'reporter', attributes: ['username', 'email', 'reputationScore'] },
-                { model: Issue, as: 'duplicateOf', attributes: ['title', 'status'] }
-            ]
+                { model: User, as: 'reporter', attributes: ['id', 'username', 'email', 'reputationScore'] },
+                { model: Issue, as: 'duplicateOf', attributes: ['id', 'title', 'status'] }
+            ],
         });
 
         if (!issue) {
@@ -204,7 +204,7 @@ exports.getNearbyIssues = async (req, res) => {
         // and filter in memory. For production with millions of rows, use bounding box.
         const issues = await Issue.findAll({
             where,
-            include: [{ model: User, as: 'reporter', attributes: ['username', 'reputationScore'] }]
+            include: [{ model: User, as: 'reporter', attributes: ['id', 'username', 'reputationScore'] }]
         });
 
         const nearbyIssues = issues.filter(issue => {

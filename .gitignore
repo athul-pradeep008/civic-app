@@ -11,3 +11,4 @@ uploads/
 dist/
 build/
 coverage/
+database.sqlite

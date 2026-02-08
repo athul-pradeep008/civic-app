@@ -29,7 +29,7 @@ function initializeSocket() {
     // Handle New Issue
     socket.on('new_issue', (data) => {
         showToast(`🆕 New Issue Reported: <b>${data.title}</b>`);
-        updateStatsUI(1, 0); // Increment total, Pending (simplified)
+        updateStatsUI(); // Refresh UI for new issue
         // Ideally, we re-fetch to be accurate or append to table if it matches filter
         // For simplicity, we'll reload data silently
         loadDashboard(true);
@@ -40,13 +40,13 @@ function initializeSocket() {
         showToast(`🔔 Issue "<b>${data.title}</b>" updated to <b>${data.status.toUpperCase()}</b>`);
 
         // Find row and update badge directly for smooth UX
-        const badge = document.querySelector(`tr[data-id="${data._id}"] .badge-status`);
+        const badge = document.querySelector(`tr[data-id="${data.id}"] .badge-status`);
         if (badge) {
             badge.className = `badge badge-status status-${data.status}`;
             badge.textContent = data.status.replace('_', ' ');
 
             // Add highlight animation
-            const row = document.querySelector(`tr[data-id="${data._id}"]`);
+            const row = document.querySelector(`tr[data-id="${data.id}"]`);
             row.classList.add('highlight-update');
             setTimeout(() => row.classList.remove('highlight-update'), 2000);
         } else {
@@ -81,7 +81,7 @@ async function loadDashboard(isUpdate = false) {
             // Handle Issues if User Fetch succeeded (needed for filter)
             if (issuesResult.status === 'fulfilled') {
                 const issues = issuesResult.value;
-                const myIssues = issues.data.filter(issue => issue.reporter._id === user.data._id);
+                const myIssues = issues.data.filter(issue => issue.reporter.id === user.data.id);
                 const pending = myIssues.filter(i => ['reported', 'verified', 'in_progress'].includes(i.status));
                 const resolved = myIssues.filter(i => i.status === 'resolved');
 
@@ -101,7 +101,6 @@ async function loadDashboard(isUpdate = false) {
         // Handle Stats (Optional)
         if (!isUpdate && statsResult && statsResult.status === 'fulfilled' && statsResult.value) {
             renderCharts(statsResult.value.data);
-            loadLeaderboard();
         } else if (statsResult && statsResult.status === 'rejected') {
             console.warn('Failed to load stats (non-critical):', statsResult.reason);
         }
@@ -138,13 +137,13 @@ function displayMyIssues(issues) {
         </thead>
         <tbody>
           ${issues.map(issue => `
-            <tr data-id="${issue._id}" class="transition-colors">
+            <tr data-id="${issue.id}" class="transition-colors">
               <td class="p-3 font-medium text-dark">${issue.title}</td>
               <td class="p-3"><span class="badge badge-secondary">${issue.category}</span></td>
               <td class="p-3"><span class="badge badge-status status-${issue.status}">${issue.status.replace('_', ' ')}</span></td>
               <td class="p-3 text-center text-muted">👍 ${issue.upvotes} • 👎 ${issue.downvotes}</td>
               <td class="p-3 text-right">
-                <a href="/issue-detail.html?id=${issue._id}" class="btn btn-sm btn-primary">View</a>
+                <a href="/issue-detail.html?id=${issue.id}" class="btn btn-sm btn-primary">View</a>
               </td>
             </tr>
           `).join('')}
@@ -154,17 +153,7 @@ function displayMyIssues(issues) {
   `;
 }
 
-async function loadLeaderboard() {
-    try {
-        const res = await fetch('/api/users/leaderboard'); // Direct fetch as public endpoint
-        const data = await res.json();
-        const list = document.getElementById('leaderboardList'); // Ensure this element exists in HTML
 
-        if (list && data.success) {
-            // ... Logic same as before (if element exists)
-        }
-    } catch (err) { console.error('Leaderboard error', err); }
-}
 
 function renderCharts(stats) {
     // Only render if elements exist
@@ -175,7 +164,7 @@ function renderCharts(stats) {
         new Chart(catCanvas.getContext('2d'), {
             type: 'doughnut',
             data: {
-                labels: stats.categories.map(c => capitalize(c._id)),
+                labels: stats.categories.map(c => capitalize(c.category || 'Unknown')),
                 datasets: [{
                     data: stats.categories.map(c => c.count),
                     backgroundColor: ['#6366f1', '#ec4899', '#f59e0b', '#10b981', '#3b82f6', '#8b5cf6', '#ef4444'],
@@ -190,10 +179,8 @@ function renderCharts(stats) {
         new Chart(statusCanvas.getContext('2d'), {
             type: 'doughnut',
             data: {
-                labels: stats.statuses.map(s => capitalize(s._id.replace('_', ' '))),
+                labels: stats.statuses.map(s => capitalize((s.status || 'Unknown').replace('_', ' '))),
                 datasets: [{
-                    data: stats.statuses.map(s => c.count), // Bug fix from original: c is not defined
-                    // actually mapped correctly below
                     data: stats.statuses.map(s => s.count),
                     backgroundColor: ['#10b981', '#f59e0b', '#3b82f6', '#ef4444', '#6366f1'],
                     borderWidth: 0
@@ -211,6 +198,7 @@ function setText(id, val) {
 }
 
 function capitalize(str) {
+    if (!str) return '';
     return str.charAt(0).toUpperCase() + str.slice(1);
 }
 
@@ -254,3 +242,8 @@ style.innerHTML = `
     }
 `;
 document.head.appendChild(style);
+
+function updateStatsUI() {
+    // For consistency with Socket.io, loadDashboard(true) is safer
+    loadDashboard(true);
+}

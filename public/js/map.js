@@ -177,7 +177,7 @@ const addIssueMarkers = (issues) => {
           <span style="background: ${color}; color: white; padding: 2px 8px; border-radius: 12px; font-size: 0.75rem;">${issue.category}</span>
           <span style="background: #e2e8f0; color: #475569; padding: 2px 8px; border-radius: 12px; font-size: 0.75rem;">${issue.status}</span>
         </div>
-        <a href="/issue-detail.html?id=${issue._id}" style="color: #6366f1; text-decoration: none; font-weight: 600; font-size: 0.875rem;">View Details →</a>
+        <a href="/issue-detail.html?id=${issue.id}" style="color: #6366f1; text-decoration: none; font-weight: 600; font-size: 0.875rem;">View Details →</a>
       </div>
     `;
 
